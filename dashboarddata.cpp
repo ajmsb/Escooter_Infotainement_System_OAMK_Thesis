@@ -4,7 +4,9 @@ DashboardData::DashboardData(QObject *parent)
     : QObject(parent), m_speed(0), m_batteryPercent(100), m_ridingMode("ECO MODE"),
       m_nextInstruction("In 200m, turn left"), m_songTitle("Riding High"),
       m_artistName("The Highway Band"), m_isPlaying(true), m_temperature("22"),
-      m_weatherIcon("☀️"), m_weatherDesc("Sunny")
+      m_weatherIcon("☀️"), m_weatherDesc("Sunny"),
+      m_latitude(65.01323660736493), m_longitude(25.466785314663174),
+      m_isRiding(false), m_distance(0.0)
 {
 }
 
@@ -145,5 +147,61 @@ void DashboardData::setWeatherDesc(const QString &desc)
   {
     m_weatherDesc = desc;
     emit weatherDescChanged();
+  }
+}
+
+double DashboardData::latitude() const
+{
+  return m_latitude;
+}
+
+void DashboardData::setLatitude(double lat)
+{
+  if (qAbs(m_latitude - lat) > 0.0000001)
+  {
+    m_latitude = lat;
+    emit latitudeChanged();
+  }
+}
+
+double DashboardData::longitude() const
+{
+  return m_longitude;
+}
+
+void DashboardData::setLongitude(double lon)
+{
+  if (qAbs(m_longitude - lon) > 0.0000001)
+  {
+    m_longitude = lon;
+    emit longitudeChanged();
+  }
+}
+
+bool DashboardData::isRiding() const
+{
+  return m_isRiding;
+}
+
+void DashboardData::setIsRiding(bool riding)
+{
+  if (m_isRiding != riding)
+  {
+    m_isRiding = riding;
+    emit isRidingChanged();
+  }
+}
+
+double DashboardData::distance() const
+{
+  return m_distance;
+}
+
+void DashboardData::setDistance(double dist)
+{
+  if (qAbs(m_distance - dist) > 0.001)
+  {
+    m_distance = dist;
+    emit distanceChanged();
   }
 }

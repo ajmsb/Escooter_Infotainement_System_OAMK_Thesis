@@ -16,6 +16,10 @@ class DashboardData : public QObject
   Q_PROPERTY(QString temperature READ temperature WRITE setTemperature NOTIFY temperatureChanged)
   Q_PROPERTY(QString weatherIcon READ weatherIcon WRITE setWeatherIcon NOTIFY weatherIconChanged)
   Q_PROPERTY(QString weatherDesc READ weatherDesc WRITE setWeatherDesc NOTIFY weatherDescChanged)
+  Q_PROPERTY(double latitude READ latitude WRITE setLatitude NOTIFY latitudeChanged)
+  Q_PROPERTY(double longitude READ longitude WRITE setLongitude NOTIFY longitudeChanged)
+  Q_PROPERTY(bool isRiding READ isRiding WRITE setIsRiding NOTIFY isRidingChanged)
+  Q_PROPERTY(double distance READ distance WRITE setDistance NOTIFY distanceChanged)
 
 public:
   explicit DashboardData(QObject *parent = nullptr);
@@ -50,6 +54,18 @@ public:
   QString weatherDesc() const;
   void setWeatherDesc(const QString &desc);
 
+  double latitude() const;
+  void setLatitude(double lat);
+
+  double longitude() const;
+  void setLongitude(double lon);
+
+  bool isRiding() const;
+  void setIsRiding(bool riding);
+
+  double distance() const;
+  void setDistance(double dist);
+
 signals:
   void speedChanged();
   void batteryPercentChanged();
@@ -61,6 +77,10 @@ signals:
   void temperatureChanged();
   void weatherIconChanged();
   void weatherDescChanged();
+  void latitudeChanged();
+  void longitudeChanged();
+  void isRidingChanged();
+  void distanceChanged();
 
 private:
   int m_speed;
@@ -73,6 +93,10 @@ private:
   QString m_temperature;
   QString m_weatherIcon;
   QString m_weatherDesc;
+  double m_latitude;
+  double m_longitude;
+  bool m_isRiding;
+  double m_distance;
 };
 
 #endif // DASHBOARDDATA_H

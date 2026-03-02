@@ -1,5 +1,11 @@
+<!DOCTYPE RCC>
 <RCC>
-    <qresource prefix="/">
-        <file>main.qml</file>
-    </qresource>
+  <qresource prefix="/">
+    <file>main.qml</file>
+    <file>assets/media/Adekunle Gold - The Life I Chose.mp3</file>
+    <file>assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3</file>
+    <file>assets/media/cover.jpg</file>
+    <file>assets/fonts/Sintony/Sintony-Bold.ttf</file>
+    <file>assets/fonts/Sintony/Sintony-Regular.ttf</file>
+  </qresource>
 </RCC>

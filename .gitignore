@@ -73,5 +73,10 @@ CMakeLists.txt.user*
 *.exe
 
 # directory
-build-*/
+build/
+builds/
+
+# Spec Files
+Thesis-template-110625-Word.docx
+assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3
 

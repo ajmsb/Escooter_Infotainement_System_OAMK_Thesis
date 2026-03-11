@@ -23,6 +23,36 @@ Window {
 
     property var dashboardData
     property var routeSimulator
+    property real currentTemperature: 0
+
+    // Fetch current temperature from Open-Meteo API (Oulu, Finland)
+    function fetchWeather() {
+        var xhr = new XMLHttpRequest()
+        var url = "https://api.open-meteo.com/v1/forecast?latitude=65.012295&longitude=25.470932&current=temperature_2m"
+        xhr.open("GET", url)
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText)
+                    currentTemperature = response.current.temperature_2m
+                    console.log("Weather updated:", currentTemperature, "°C")
+                } else {
+                    console.warn("Weather fetch failed, status:", xhr.status)
+                }
+            }
+        }
+        xhr.send()
+    }
+
+    // Refresh weather every 10 minutes, fetch immediately on start
+    Timer {
+        id: weatherTimer
+        interval: 600000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: fetchWeather()
+    }
 
     // Battery color logic
     function getBatteryColor() {
@@ -156,7 +186,7 @@ Window {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: new Date().toLocaleDateString(
                                           Qt.locale(),
-                                          "dddd") + " " + (root.dashboardData ? root.dashboardData.temperature : "--") + "°C"
+                                          "dddd") + " " + root.currentTemperature.toFixed(1) + "°C"
                                 color: root.eGreen
                                 font.pointSize: 14
                                 font.bold: false

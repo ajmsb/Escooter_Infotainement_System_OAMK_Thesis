@@ -20,6 +20,7 @@ class DashboardData : public QObject
   Q_PROPERTY(double longitude READ longitude WRITE setLongitude NOTIFY longitudeChanged)
   Q_PROPERTY(bool isRiding READ isRiding WRITE setIsRiding NOTIFY isRidingChanged)
   Q_PROPERTY(double distance READ distance WRITE setDistance NOTIFY distanceChanged)
+  Q_PROPERTY(double totalDistance READ totalDistance WRITE setTotalDistance NOTIFY totalDistanceChanged)
 
 public:
   explicit DashboardData(QObject *parent = nullptr);
@@ -66,6 +67,9 @@ public:
   double distance() const;
   void setDistance(double dist);
 
+  double totalDistance() const;
+  void setTotalDistance(double dist);
+
 signals:
   void speedChanged();
   void batteryPercentChanged();
@@ -81,6 +85,7 @@ signals:
   void longitudeChanged();
   void isRidingChanged();
   void distanceChanged();
+  void totalDistanceChanged();
 
 private:
   int m_speed;
@@ -97,6 +102,7 @@ private:
   double m_longitude;
   bool m_isRiding;
   double m_distance;
+  double m_totalDistance;
 };
 
 #endif // DASHBOARDDATA_H

@@ -6,7 +6,7 @@ DashboardData::DashboardData(QObject *parent)
       m_artistName("The Highway Band"), m_isPlaying(true), m_temperature("22"),
       m_weatherIcon("☀️"), m_weatherDesc("Sunny"),
       m_latitude(65.01323660736493), m_longitude(25.466785314663174),
-      m_isRiding(false), m_distance(0.0)
+      m_isRiding(false), m_distance(0.0), m_totalDistance(0.0)
 {
 }
 
@@ -203,5 +203,19 @@ void DashboardData::setDistance(double dist)
   {
     m_distance = dist;
     emit distanceChanged();
+  }
+}
+
+double DashboardData::totalDistance() const
+{
+  return m_totalDistance;
+}
+
+void DashboardData::setTotalDistance(double dist)
+{
+  if (qAbs(m_totalDistance - dist) > 0.001)
+  {
+    m_totalDistance = dist;
+    emit totalDistanceChanged();
   }
 }

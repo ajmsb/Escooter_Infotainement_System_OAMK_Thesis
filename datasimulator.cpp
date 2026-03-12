@@ -19,41 +19,56 @@ void DataSimulator::stop()
 
 void DataSimulator::updateData()
 {
-  // Simulate speed: increase from 0 to 25, then decrease back to 0, repeat
-  if (m_speedIncreasing)
+  // Simulate speed: only vary when riding is active
+  if (m_dashboardData->isRiding())
   {
-    m_currentSpeed++;
-    if (m_currentSpeed >= 25)
+    if (m_speedIncreasing)
     {
-      m_speedIncreasing = false;
+      m_currentSpeed++;
+      if (m_currentSpeed >= 25)
+      {
+        m_speedIncreasing = false;
+      }
+    }
+    else
+    {
+      m_currentSpeed--;
+      if (m_currentSpeed <= 0)
+      {
+        m_speedIncreasing = true;
+      }
     }
   }
   else
   {
-    m_currentSpeed--;
-    if (m_currentSpeed <= 0)
-    {
-      m_speedIncreasing = true;
-    }
+    m_currentSpeed = 0;
+    m_speedIncreasing = true;
   }
   m_dashboardData->setSpeed(m_currentSpeed);
 
-  // Simulate battery: decrease slowly every 50 updates (5 seconds)
+  // Simulate battery: decrease slowly every 50 updates (5 seconds), only while riding
   static int batteryCounter = 0;
-  batteryCounter++;
-  if (batteryCounter >= 50)
+  if (m_dashboardData->isRiding())
+  {
+    batteryCounter++;
+    if (batteryCounter >= 50)
+    {
+      batteryCounter = 0;
+      if (m_currentBattery > 0)
+      {
+        m_currentBattery--;
+        m_dashboardData->setBatteryPercent(m_currentBattery);
+      }
+      else
+      {
+        m_currentBattery = 100; // Reset to full
+        m_dashboardData->setBatteryPercent(m_currentBattery);
+      }
+    }
+  }
+  else
   {
     batteryCounter = 0;
-    if (m_currentBattery > 0)
-    {
-      m_currentBattery--;
-      m_dashboardData->setBatteryPercent(m_currentBattery);
-    }
-    else
-    {
-      m_currentBattery = 100; // Reset to full
-      m_dashboardData->setBatteryPercent(m_currentBattery);
-    }
   }
 
   // Cycle navigation instructions every 100 updates (10 seconds)

@@ -183,6 +183,9 @@ void RouteSimulator::generateRoute()
   qDebug() << "Route generated with" << m_routePoints.size() << "points";
   qDebug() << "Total distance:" << m_totalDistance << "meters";
   qDebug() << "Following" << roadWaypoints.size() << "road waypoints";
+
+  // Expose total distance (in km) to dashboard
+  m_dashboardData->setTotalDistance(m_totalDistance / 1000.0);
 }
 
 double RouteSimulator::calculateDistance(const QGeoCoordinate &from, const QGeoCoordinate &to)

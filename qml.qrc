@@ -1,9 +1,20 @@
 <RCC>
     <qresource prefix="/">
-        <file>main.qml</file>
-        <file>assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3</file>
-        <file>assets/media/cover.jpg</file>
         <file>assets/fonts/Sintony/Sintony-Bold.ttf</file>
         <file>assets/fonts/Sintony/Sintony-Regular.ttf</file>
+        <file>assets/icons/bx_stats.png</file>
+        <file>assets/icons/Group.png</file>
+        <file>assets/icons/Head_light.png</file>
+        <file>assets/icons/material-symbols_fast-rewind-rounded-2.png</file>
+        <file>assets/icons/material-symbols_fast-rewind-rounded.png</file>
+        <file>assets/icons/Pause.png</file>
+        <file>assets/icons/Play.png</file>
+        <file>assets/icons/torch_off.png</file>
+        <file>assets/media/Balti - Allo.mp3</file>
+        <file>assets/media/Balti - Ya Galbi.mp3</file>
+        <file>assets/media/cover.jpg</file>
+        <file>assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3</file>
+        <file>main.qml</file>
+        <file>assets/icons/menu.png</file>
     </qresource>
 </RCC>

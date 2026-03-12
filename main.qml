@@ -24,6 +24,14 @@ Window {
     property var dashboardData
     property var routeSimulator
     property real currentTemperature: 0
+    property string currentTime: new Date().toLocaleTimeString(Qt.locale(), "h:mm")
+
+    Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: currentTime = new Date().toLocaleTimeString(Qt.locale(), "h:mm")
+    }
 
     // Fetch current temperature from Open-Meteo API (Oulu, Finland)
     function fetchWeather() {
@@ -96,7 +104,49 @@ Window {
         Column {
             spacing: 20
             anchors.verticalCenter: parent.verticalCenter
+            // Menu Button 
+            Row {
+                spacing: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                Rectangle {
+                    width: 40
+                    height: 40
+                    color: "#111111"
+                    radius: 10
+                    border.color: "#222222"
+                    border.width: 2
 
+                    Image {
+                        source: "qrc:/assets/icons/menu.png"
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                }
+            }
+            // Statistics preview Button 
+            Row {
+                spacing: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                Rectangle {
+                    width: 40
+                    height: 40
+                    color: "#111111"
+                    radius: 10
+                    border.color: "#222222"
+                    border.width: 2
+
+                    Image {
+                        source: "qrc:/assets/icons/bx_stats.png"
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                }
+            }
+           
             Row {
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -121,30 +171,8 @@ Window {
                     border.width: 2
                 }
             }
-            Row {
-                spacing: 20
-                anchors.horizontalCenter: parent.horizontalCenter
-                Rectangle {
-                    width: 40
-                    height: 40
-                    color: "#111111"
-                    radius: 10
-                    border.color: "#222222"
-                    border.width: 2
-                }
-            }
-            Row {
-                spacing: 20
-                anchors.horizontalCenter: parent.horizontalCenter
-                Rectangle {
-                    width: 40
-                    height: 40
-                    color: "#111111"
-                    radius: 10
-                    border.color: "#222222"
-                    border.width: 2
-                }
-            }
+
+            // Volume control button
             Row {
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -178,7 +206,7 @@ Window {
                         border.width: 2
 
                         Column {
-                            spacing: -15
+                            spacing: -10
                             anchors.centerIn: parent
                             Text {
                                 id: tempText
@@ -188,7 +216,7 @@ Window {
                                           Qt.locale(),
                                           "dddd") + " " + root.currentTemperature.toFixed(1) + "°C"
                                 color: root.eGreen
-                                font.pointSize: 14
+                                font.pointSize: 12
                                 font.bold: false
                                 //horizontalAlignment: Text.AlignHCenter
                                 //verticalAlignment: Text.AlignVCenter
@@ -197,8 +225,7 @@ Window {
                                 //anchors.top: tempText.bottom
                                 anchors.horizontalCenter: parent.horizontalCenter
 
-                                text: new Date().toLocaleTimeString(
-                                          Qt.locale(), "h:mm")
+                                text: root.currentTime
                                 color: root.eGreen
                                 font.pointSize: 35
                                 font.bold: true
@@ -210,7 +237,7 @@ Window {
                 }
             }
 
-            // Mode Selection
+            // Mode Selection Row
             Row {
                 spacing: 5
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -251,16 +278,34 @@ Window {
             }
             // Media Player Row
             Row {
+                id: mediaPlayerRow
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
+
+                // Playlist — add more qrc:/ entries here (and register them in qml.qrc)
+                property var songList: [
+                    "qrc:/assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3",
+                    "qrc:/assets/media/Balti - Allo.mp3",
+                    "qrc:/assets/media/Balti - Ya Galbi.mp3"
+                ]
+                property int currentSongIndex: 0
 
                 // Media player backend
                 MediaPlayer {
                     id: audioPlayer
-                    source: "qrc:/assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3"
+                    source: mediaPlayerRow.songList[mediaPlayerRow.currentSongIndex]
                     audioOutput: AudioOutput {
                         id: audioOutput
                         volume: 0.7
+                    }
+
+                    onMediaStatusChanged: {
+                        // Auto-advance to next song when current one finishes
+                        if (mediaStatus === MediaPlayer.EndOfMedia) {
+                            mediaPlayerRow.currentSongIndex =
+                                (mediaPlayerRow.currentSongIndex + 1) % mediaPlayerRow.songList.length
+                            audioPlayer.play()
+                        }
                     }
                     
                     onPlaybackStateChanged: {
@@ -385,45 +430,67 @@ Window {
                         z: 1
 
                         Rectangle {
+                            id: previousButton
                             width: 30
                             height: 30
                             color: root.eGreen
                             radius: 15
                             anchors.verticalCenter: parent.verticalCenter
 
-                            Text {
-                                id: previous
-                                font.pixelSize: 20
-                                text: "<"
-                                color: "#000000"
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                                leftPadding: 8
+                            // Text {
+                            //     id: previous
+                            //     font.pixelSize: 20
+                            //     text: "<"
+                            //     color: "#000000"
+                            //     verticalAlignment: Text.AlignVCenter
+                            //     horizontalAlignment: Text.AlignHCenter
+                            //     leftPadding: 8
+                            // }
+                            Image {
+                                source: "qrc:/assets/icons/material-symbols_fast-rewind-rounded-2.png"
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                fillMode: Image.PreserveAspectFit
                             }
                             
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    audioPlayer.position = Math.max(0, audioPlayer.position - 5000)
+                                    mediaPlayerRow.currentSongIndex =
+                                        (mediaPlayerRow.currentSongIndex - 1 + mediaPlayerRow.songList.length) % mediaPlayerRow.songList.length
+                                    audioPlayer.play()
                                 }
                             }
                         }
                         
                         Rectangle {
+                            id:playPauseButton
                             width: 50
                             height: 50
                             color: root.eGreen
                             radius: 25
                             
-                            Text {
+                            // Text {
+                            //     id: playPauseIcon
+                            //     font.pixelSize: 52
+                            //     text: audioPlayer.playbackState === MediaPlayer.PlayingState ? "ll" : "▶"
+                            //     color: "#000000"
+                            //     verticalAlignment: Text.AlignVCenter
+                            //     horizontalAlignment: Text.AlignHCenter
+                            //     anchors.verticalCenter: parent.verticalCenter
+                            //     leftPadding: text === "▶" ? 15 : 12
+                            // }
+
+                            Image {
                                 id: playPauseIcon
-                                font.pixelSize: 52
-                                text: audioPlayer.playbackState === MediaPlayer.PlayingState ? "ll" : "▶"
-                                color: "#000000"
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                                anchors.verticalCenter: parent.verticalCenter
-                                leftPadding: text === "▶" ? 15 : 12
+                                source: audioPlayer.playbackState === MediaPlayer.PlayingState 
+                                        ? "qrc:/assets/icons/Pause.png" 
+                                        : "qrc:/assets/icons/Play.png"
+                                anchors.centerIn: parent
+                                width: 28
+                                height: 28
+                                fillMode: Image.PreserveAspectFit
                             }
                             
                             MouseArea {
@@ -444,26 +511,36 @@ Window {
                         }
                         
                         Rectangle {
+                            id:nextButton
                             width: 30
                             height: 30
                             color: root.eGreen
                             radius: 15
                             anchors.verticalCenter: parent.verticalCenter
 
-                            Text {
-                                id: next
-                                font.pixelSize: 20
-                                text: ">"
-                                color: "#000000"
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                                leftPadding: 8
+                            // Text {
+                            //     id: next
+                            //     font.pixelSize: 20
+                            //     text: ">"
+                            //     color: "#000000"
+                            //     verticalAlignment: Text.AlignVCenter
+                            //     horizontalAlignment: Text.AlignHCenter
+                            //     leftPadding: 8
+                            // }
+                            Image {
+                                source: "qrc:/assets/icons/material-symbols_fast-rewind-rounded.png"
+                                anchors.centerIn: parent
+                                width: 22
+                                height: 22
+                                fillMode: Image.PreserveAspectFit
                             }
                             
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    audioPlayer.position = Math.min(audioPlayer.duration, audioPlayer.position + 5000)
+                                    mediaPlayerRow.currentSongIndex =
+                                        (mediaPlayerRow.currentSongIndex + 1) % mediaPlayerRow.songList.length
+                                    audioPlayer.play()
                                 }
                             }
                         }
@@ -476,6 +553,7 @@ Window {
             spacing: 0
             leftPadding: 20
             //anchors.verticalCenter: parent.verticalCenter
+
             //Speed Bar
             Row {
 
@@ -519,7 +597,6 @@ Window {
                     }
                 }
             }
-
             // Batterie bar
             Row {
                 // topPadding: 0
@@ -577,6 +654,7 @@ Window {
                     }
                 }
             }
+            // Remainign time
             Row {
                 // topPadding: 0
                 spacing: 20
@@ -596,24 +674,30 @@ Window {
                         height: 40
                         color: root.eGrey
                         radius: 10
-                        Rectangle {
-                            width: 160
-                            height: 40
-                            color: root.eGrey
-                            radius: 10
-                            Text {
-                                anchors.centerIn: parent
-                                text: "TBD"
-                                color: "#000000"
-                                font.pointSize: 16
-                                font.bold: true
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                        Text {
+                            anchors.centerIn: parent
+                            text: {
+                                var speed = root.dashboardData ? root.dashboardData.speed : 0
+                                var traveled = root.dashboardData ? root.dashboardData.distance : 0
+                                var total = root.dashboardData ? root.dashboardData.totalDistance : 0
+                                if (!root.dashboardData || !root.dashboardData.isRiding || speed <= 0)
+                                    return "--:--"
+                                var remaining = total - traveled
+                                if (remaining <= 0)
+                                    return "0:00"
+                                // T = D / V  (hours), convert to milliseconds for formatTime
+                                return formatTime((remaining / speed) * 3600 * 1000)
                             }
+                            color: "#000000"
+                            font.pointSize: 16
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
                     }
                 }
             }
+            // Distance
             Row {
                 // topPadding: 0
                 spacing: 20
@@ -646,31 +730,6 @@ Window {
                     }
                 }
             }
-
-            // Row {
-            //     spacing: 20
-            //     anchors.horizontalCenter: parent.horizontalCenter
-            //     Rectangle {
-            //         width: 160
-            //         height: 40
-            //         color: "#111111"
-            //         radius: 10
-            //         border.color: "#222222"
-            //         border.width: 2
-            //     }
-            // }
-            // Row {
-            //     spacing: 20
-            //     anchors.horizontalCenter: parent.horizontalCenter
-            //     Rectangle {
-            //         width: 160
-            //         height: 40
-            //         color: "#111111"
-            //         radius: 10
-            //         border.color: "#222222"
-            //         border.width: 2
-            //     }
-            // }
         }
         // Map Column
         Column {

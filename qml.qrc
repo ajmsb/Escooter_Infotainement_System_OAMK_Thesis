@@ -16,5 +16,11 @@
         <file>assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3</file>
         <file>main.qml</file>
         <file>assets/icons/menu.png</file>
+        <file>assets/icons/svg-path.png</file>
+        <file>assets/icons/svg-path-2.png</file>
+        <file>assets/icons/svg-path-3.png</file>
+        <file>assets/icons/Head_light_off.png</file>
+        <file>assets/icons/boxiconslock.png</file>
+        <file>assets/icons/boxiconslockopen.png</file>
     </qresource>
 </RCC>

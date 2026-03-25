@@ -21,6 +21,8 @@ Window {
     property string eLightGrey: "#c2c2c2"
     property string bgColor: "#0a0a0a"
 
+    property bool menuOpen: false
+    property bool statsViewOpen: false
     property var dashboardData
     property var routeSimulator
     property real currentTemperature: 0
@@ -100,12 +102,15 @@ Window {
     Row {
         spacing: 20
         anchors.centerIn: parent
+
         // Menu Column
         Column {
             spacing: 20
             anchors.verticalCenter: parent.verticalCenter
+
             // Menu Button 
             Row {
+                id: menuButton
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 Rectangle {
@@ -123,13 +128,20 @@ Window {
                         height: 24
                         fillMode: Image.PreserveAspectFit
                     }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: root.menuOpen = !root.menuOpen
+                    }
                 }
             }
+
             // Statistics preview Button 
             Row {
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 Rectangle {
+                    id: statsButton
                     width: 40
                     height: 40
                     color: "#111111"
@@ -144,35 +156,117 @@ Window {
                         height: 24
                         fillMode: Image.PreserveAspectFit
                     }
-                }
-            }
-           
-            Row {
-                spacing: 20
-                anchors.horizontalCenter: parent.horizontalCenter
-                Rectangle {
-                    width: 40
-                    height: 40
-                    color: "#111111"
-                    radius: 10
-                    border.color: "#222222"
-                    border.width: 2
-                }
-            }
-            Row {
-                spacing: 20
-                anchors.horizontalCenter: parent.horizontalCenter
-                Rectangle {
-                    width: 40
-                    height: 40
-                    color: "#111111"
-                    radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: root.statsViewOpen = true
+                    }
                 }
             }
 
-            // Volume control button
+            // Lock control Button
+            Row {
+                spacing: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                Rectangle {
+                    id: lockControl
+                    width: 40
+                    height: 40
+                    color: "#111111"
+                    radius: 10
+                    border.color: "#222222"
+                    border.width: 2
+
+                    Image {
+                        id: lockOn
+                        source: "qrc:/assets/icons/boxiconslock.png"
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    Image {
+                        id: lockOff
+                        source: "qrc:/assets/icons/boxiconslockopen.png"
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            // Toggle lock state (this is just a visual toggle for now)
+                            if (lockOn.visible) {
+                                lockOn.visible = false
+                                lockOff.visible = true
+                                lockControl.color = "#111111"
+
+                                
+
+                            } else {
+                                lockOn.visible = true
+                                lockOff.visible = false
+                                lockControl.color = root.eGreen
+                                
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Head Light control button
+            Row {
+                spacing: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                Rectangle {
+                    id: headlightControl
+                    width: 40
+                    height: 40
+                    color: "#111111"
+                    radius: 10
+                    border.color: "#222222"
+                    border.width: 2
+
+                    Image {
+                        id: headlightOn
+                        source: "qrc:/assets/icons/Head_light.png"
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    Image {
+                        id: headlightOff
+                        source: "qrc:/assets/icons/Head_light_off.png"
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            // Toggle headlight state (this is just a visual toggle for now)
+                            if (headlightOn.visible) {
+                                headlightOn.visible = false
+                                headlightOff.visible = true
+                                headlightControl.color = "#111111"
+
+                                
+
+                            } else {
+                                headlightOn.visible = true
+                                headlightOff.visible = false
+                                headlightControl.color = root.eGreen
+                                
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Volume control slider
             Row {
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -183,6 +277,50 @@ Window {
                     radius: 10
                     border.color: "#222222"
                     border.width: 2
+                    clip: true
+
+                    // Volume fill (grows from bottom)
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: parent.height * audioOutput.volume
+                        color: root.eGreen
+                        radius: parent.radius
+                        opacity: 0.8
+
+                        Behavior on height {
+                            NumberAnimation { duration: 100 }
+                        }
+                    }
+
+                    // Volume icon
+                    Image {
+                        source: audioOutput.volume == 0
+                            ? "qrc:/assets/icons/svg-path.png"
+                            : "qrc:/assets/icons/svg-path-3.png"
+
+                        anchors.centerIn: parent
+                        width: 20
+                        height: 20
+                        fillMode: Image.PreserveAspectFit
+                        z: 1
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: function(mouse) {
+                            // Map click Y position to volume (top = 1.0, bottom = 0.0)
+                            var vol = 1.0 - (mouse.y / parent.height)
+                            audioOutput.volume = Math.max(0, Math.min(1, vol))
+                        }
+                        onPositionChanged: function(mouse) {
+                            if (pressed) {
+                                var vol = 1.0 - (mouse.y / parent.height)
+                                audioOutput.volume = Math.max(0, Math.min(1, vol))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -563,10 +701,10 @@ Window {
                 Rectangle {
                     width: 160
                     height: 140
-                    color: "#111111"
+                    color: root.eGrey
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    // border.color: "#222222"
+                    // border.width: 2
 
                     Rectangle {
                         anchors.left: parent.left
@@ -628,16 +766,7 @@ Window {
                                        (parent.width) * ((root.dashboardData ? root.dashboardData.batteryPercent : 0) / 100))
                             color: root.getBatteryColor()
                             radius: parent.radius
-                            Text {
-                                anchors.centerIn: parent
-                                text: (root.dashboardData ? root.dashboardData.batteryPercent : 0)
-                                      + "%"
-                                color: "#000000"
-                                font.pointSize: 16
-                                font.bold: true
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
+                            
                             Behavior on width {
                                 NumberAnimation {
                                     duration: 400
@@ -651,6 +780,16 @@ Window {
                                 }
                             }
                         }
+                        Text {
+                                anchors.centerIn: batteryRect
+                                text: (root.dashboardData ? root.dashboardData.batteryPercent : 0)
+                                      + "%"
+                                color: root.bgColor
+                                font.pointSize: 16
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
                     }
                 }
             }
@@ -1040,6 +1179,121 @@ Window {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // Statistics View
+    Rectangle {
+        id: statsView
+        anchors.fill: parent
+        color: root.bgColor
+        visible: root.statsViewOpen
+        z: 97
+
+        Text {
+            anchors.centerIn: parent
+            text: "Statistics View"
+            color: root.eGreen
+            font.pointSize: 24
+            font.bold: true
+        }
+
+        // Back button
+        Rectangle {
+            width: 40
+            height: 40
+            color: "#111111"
+            radius: 10
+            border.color: "#222222"
+            border.width: 2
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.margins: 15
+
+            Text {
+                anchors.centerIn: parent
+                text: "✕"
+                color: root.eGreen
+                font.pointSize: 16
+                font.bold: true
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: root.statsViewOpen = false
+            }
+        }
+    }
+
+    // Dim overlay when menu is open
+    Rectangle {
+        anchors.fill: parent
+        color: "#000000"
+        opacity: root.menuOpen ? 0.4 : 0.0
+        visible: opacity > 0
+        z: 98
+
+        Behavior on opacity {
+            NumberAnimation { duration: 300 }
+        }
+
+        // MouseArea {
+        //     anchors.fill: parent
+        //     onClicked: root.menuOpen = false
+        // }
+    }
+
+    // Sliding menu panel
+    Rectangle {
+        id: menuPanel
+        width: root.width / 3
+        height: root.height
+        color: root.eGreen
+        radius: 10
+        z: 99
+        y: 0
+        x: root.menuOpen ? 0 : -width
+
+        Behavior on x {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 15
+            spacing: 20
+
+            // Close button row
+            Row {
+                anchors.right: parent.right
+                Rectangle {
+                    id: closeButton
+                    width: 30
+                    height: 30
+                    color: "transparent"
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        color: "#000000"
+                        font.pointSize: 16
+                        font.bold: true
+                    }
+                    MouseArea {
+                        anchors.fill: closeButton
+                        onClicked: root.menuOpen = false
+                    }
+                }
+            }
+
+            Text {
+                text: "MENU"
+                color: "#000000"
+                font.pointSize: 18
+                font.bold: true
             }
         }
     }

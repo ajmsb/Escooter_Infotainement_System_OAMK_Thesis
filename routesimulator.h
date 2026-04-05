@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QGeoCoordinate>
 #include <QVector>
+#include <QVariantList>
 #include "dashboarddata.h"
 
 class RouteSimulator : public QObject
@@ -17,6 +18,7 @@ public:
   Q_INVOKABLE void startRide();
   Q_INVOKABLE void stopRide();
   Q_INVOKABLE void toggleRide();
+  Q_INVOKABLE void setRoute(const QVariantList &coordinates);
 
 private slots:
   void updatePosition();

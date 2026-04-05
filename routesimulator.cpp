@@ -2,6 +2,7 @@
 #include <QtMath>
 #include <QDebug>
 #include <QRandomGenerator>
+#include <limits>
 
 RouteSimulator::RouteSimulator(DashboardData *data, QObject *parent)
     : QObject(parent),
@@ -13,7 +14,7 @@ RouteSimulator::RouteSimulator(DashboardData *data, QObject *parent)
       m_interpolationStep(0.0)
 {
   // Set start and end coordinates to match the real GPS route
-  m_startCoord = QGeoCoordinate(65.012295, 25.470932);
+  m_startCoord = QGeoCoordinate(65.06086919646035, 25.467637259998213);
   m_endCoord = QGeoCoordinate(65.026950, 25.470746);
   
   // Generate route points
@@ -36,7 +37,7 @@ void RouteSimulator::generateRoute()
   QVector<QGeoCoordinate> roadWaypoints;
   
   // Real GPS waypoints following roads in Oulu
-  roadWaypoints.append(QGeoCoordinate(65.012295, 25.470932));
+  roadWaypoints.append(QGeoCoordinate(65.06086919646035, 25.467637259998213));
   roadWaypoints.append(QGeoCoordinate(65.012615, 25.471401));
   roadWaypoints.append(QGeoCoordinate(65.012653, 25.471447));
   roadWaypoints.append(QGeoCoordinate(65.012691, 25.471509));
@@ -194,18 +195,84 @@ double RouteSimulator::calculateDistance(const QGeoCoordinate &from, const QGeoC
   return from.distanceTo(to);
 }
 
+void RouteSimulator::setRoute(const QVariantList &coordinates)
+{
+  if (coordinates.size() < 2) {
+    qDebug() << "setRoute: need at least 2 coordinates, got" << coordinates.size();
+    return;
+  }
+
+  m_routePoints.clear();
+
+  // Parse QGeoCoordinate values from QVariantList
+  QVector<QGeoCoordinate> waypoints;
+  for (const QVariant &v : coordinates) {
+    QGeoCoordinate coord = v.value<QGeoCoordinate>();
+    if (coord.isValid()) {
+      waypoints.append(coord);
+    }
+  }
+
+  if (waypoints.size() < 2) {
+    qDebug() << "setRoute: not enough valid coordinates";
+    return;
+  }
+
+  // Interpolate between waypoints for smooth animation
+  int pointsPerSegment = 8;
+  for (int i = 0; i < waypoints.size() - 1; ++i) {
+    QGeoCoordinate start = waypoints[i];
+    QGeoCoordinate end = waypoints[i + 1];
+    for (int j = 0; j < pointsPerSegment; ++j) {
+      double t = static_cast<double>(j) / pointsPerSegment;
+      double lat = start.latitude() + t * (end.latitude() - start.latitude());
+      double lon = start.longitude() + t * (end.longitude() - start.longitude());
+      m_routePoints.append(QGeoCoordinate(lat, lon));
+    }
+  }
+  m_routePoints.append(waypoints.last());
+
+  // Update start/end coords
+  m_startCoord = waypoints.first();
+  m_endCoord = waypoints.last();
+
+  // Recalculate total distance
+  m_totalDistance = 0.0;
+  for (int i = 0; i < m_routePoints.size() - 1; ++i) {
+    m_totalDistance += calculateDistance(m_routePoints[i], m_routePoints[i + 1]);
+  }
+
+  m_dashboardData->setTotalDistance(m_totalDistance / 1000.0);
+  m_currentPointIndex = 0;
+
+  qDebug() << "Route set from QML with" << waypoints.size() << "waypoints,"
+           << m_routePoints.size() << "interpolated points,"
+           << m_totalDistance << "meters total";
+}
+
 void RouteSimulator::startRide()
 {
   if (!m_dashboardData->isRiding())
   {
     m_dashboardData->setIsRiding(true);
-    m_currentPointIndex = 0;
     m_traveledDistance = 0.0;
     m_dashboardData->setDistance(0.0);
     
-    // Reset to start position
-    m_dashboardData->setLatitude(m_startCoord.latitude());
-    m_dashboardData->setLongitude(m_startCoord.longitude());
+    // Start from current location - find nearest route point
+    QGeoCoordinate currentPos(m_dashboardData->latitude(), m_dashboardData->longitude());
+    int nearestIndex = 0;
+    double minDist = std::numeric_limits<double>::max();
+    for (int i = 0; i < m_routePoints.size(); ++i) {
+      double dist = currentPos.distanceTo(m_routePoints[i]);
+      if (dist < minDist) {
+        minDist = dist;
+        nearestIndex = i;
+      }
+    }
+    m_currentPointIndex = nearestIndex;
+    m_interpolationStep = 0.0;
+    qDebug() << "Starting ride from nearest route point index:" << nearestIndex
+             << "at" << m_routePoints[nearestIndex].latitude() << m_routePoints[nearestIndex].longitude();
     
     m_timer->start();
     qDebug() << "Ride started";
@@ -236,10 +303,10 @@ void RouteSimulator::toggleRide()
 
 void RouteSimulator::updatePosition()
 {
-  if (!m_dashboardData->isRiding() || m_currentPointIndex >= m_routePoints.size())
+  if (!m_dashboardData->isRiding() || m_currentPointIndex >= m_routePoints.size() - 1)
   {
     // End of route reached
-    if (m_currentPointIndex >= m_routePoints.size())
+    if (m_currentPointIndex >= m_routePoints.size() - 1)
     {
       qDebug() << "Destination reached!";
       stopRide();
@@ -247,40 +314,78 @@ void RouteSimulator::updatePosition()
       // Reset to start for next ride
       m_currentPointIndex = 0;
       m_traveledDistance = 0.0;
+      m_interpolationStep = 0.0;
     }
     return;
   }
   
-  // Update position to current point
-  QGeoCoordinate currentPos = m_routePoints[m_currentPointIndex];
-  m_dashboardData->setLatitude(currentPos.latitude());
-  m_dashboardData->setLongitude(currentPos.longitude());
+  // Fixed speed: 25 km/h = 6.944 m/s
+  // Timer fires every 100ms, so move 0.6944 meters per tick
+  double speed_ms = 25.0 * 1000.0 / 3600.0; // 6.944 m/s
+  double distancePerTick = speed_ms * 0.1;    // meters per 100ms tick
+  double remaining = distancePerTick;
   
-  // Calculate distance traveled
-  if (m_currentPointIndex > 0)
+  while (remaining > 0.0 && m_currentPointIndex < m_routePoints.size() - 1)
   {
-    double segmentDistance = calculateDistance(
-      m_routePoints[m_currentPointIndex - 1],
-      m_routePoints[m_currentPointIndex]
-    );
-    m_traveledDistance += segmentDistance;
-    m_dashboardData->setDistance(m_traveledDistance / 1000.0); // Convert to km
+    QGeoCoordinate from = m_routePoints[m_currentPointIndex];
+    QGeoCoordinate to = m_routePoints[m_currentPointIndex + 1];
+    double segmentLen = from.distanceTo(to);
+    
+    if (segmentLen < 0.001) {
+      // Skip zero-length segments
+      m_currentPointIndex++;
+      m_interpolationStep = 0.0;
+      continue;
+    }
+    
+    double alreadyTraveled = m_interpolationStep * segmentLen;
+    double leftInSegment = segmentLen - alreadyTraveled;
+    
+    if (remaining < leftInSegment) {
+      // Stay within this segment
+      m_interpolationStep += remaining / segmentLen;
+      remaining = 0.0;
+    } else {
+      // Move to next segment
+      remaining -= leftInSegment;
+      m_traveledDistance += leftInSegment;
+      m_currentPointIndex++;
+      m_interpolationStep = 0.0;
+    }
   }
   
-  // Calculate and update speed (km/h)
-  // Simulate varying speed between 15-25 km/h
-  int baseSpeed = 20;
-  int speedVariation = 5;
-  int currentSpeed = baseSpeed + (QRandomGenerator::global()->bounded(speedVariation * 2 + 1)) - speedVariation;
-  currentSpeed = qMax(15, qMin(25, currentSpeed));
-  m_dashboardData->setSpeed(currentSpeed);
+  // Interpolate position within current segment
+  if (m_currentPointIndex < m_routePoints.size() - 1) {
+    QGeoCoordinate from = m_routePoints[m_currentPointIndex];
+    QGeoCoordinate to = m_routePoints[m_currentPointIndex + 1];
+    double t = m_interpolationStep;
+    double lat = from.latitude() + t * (to.latitude() - from.latitude());
+    double lon = from.longitude() + t * (to.longitude() - from.longitude());
+    
+    m_dashboardData->setLatitude(lat);
+    m_dashboardData->setLongitude(lon);
+    
+    // Heading toward next point
+    QGeoCoordinate currentPos(lat, lon);
+    double bearing = currentPos.azimuthTo(to);
+    m_dashboardData->setHeading(bearing);
+    
+    m_traveledDistance += distancePerTick - (distancePerTick - distancePerTick); // track
+  } else {
+    // At the last point
+    QGeoCoordinate lastPos = m_routePoints.last();
+    m_dashboardData->setLatitude(lastPos.latitude());
+    m_dashboardData->setLongitude(lastPos.longitude());
+  }
   
-  // Update battery (decrease based on distance)
-  // Lose approximately 1% per 500 meters
+  // Update traveled distance
+  m_dashboardData->setDistance(m_traveledDistance / 1000.0);
+  
+  // Fixed speed display
+  m_dashboardData->setSpeed(25);
+  
+  // Update battery (decrease ~1% per 500 meters)
   int batteryPercent = 100 - static_cast<int>(m_traveledDistance / 500.0);
   batteryPercent = qMax(0, qMin(100, batteryPercent));
   m_dashboardData->setBatteryPercent(batteryPercent);
-  
-  // Move to next point
-  m_currentPointIndex++;
 }

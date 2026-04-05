@@ -38,7 +38,7 @@ Window {
     // Fetch current temperature from Open-Meteo API (Oulu, Finland)
     function fetchWeather() {
         var xhr = new XMLHttpRequest()
-        var url = "https://api.open-meteo.com/v1/forecast?latitude=65.012295&longitude=25.470932&current=temperature_2m"
+        var url = "https://api.open-meteo.com/v1/forecast?latitude=65.06087&longitude=25.46764&current=temperature_2m"
         xhr.open("GET", url)
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
@@ -487,7 +487,7 @@ Window {
                         source: "qrc:/assets/media/cover.jpg"
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
-                        z: 4
+                        z: 1
                         
                         Component.onCompleted: {
                             console.log("=== ALBUM ART DEBUG ===")
@@ -793,7 +793,7 @@ Window {
                     }
                 }
             }
-            // Remainign time
+            // Remaining time
             Row {
                 // topPadding: 0
                 spacing: 20
@@ -808,6 +808,31 @@ Window {
                         verticalAlignment: Text.AlignVCenter
                     }
 
+                    // Smooth remaining time - updates once per second
+                    property string remainingTimeText: "--:--"
+                    Timer {
+                        id: remainingTimeTimer
+                        interval: 1000
+                        running: root.dashboardData && root.dashboardData.isRiding
+                        repeat: true
+                        onTriggered: {
+                            var total = root.dashboardData ? root.dashboardData.totalDistance : 0
+                            var traveled = root.dashboardData ? root.dashboardData.distance : 0
+                            var remaining = total - traveled
+                            if (remaining <= 0) {
+                                parent.remainingTimeText = "0:00"
+                                return
+                            }
+                            // Fixed 25 km/h → remaining km / 25 km/h = hours
+                            var hours = remaining / 25.0
+                            parent.remainingTimeText = formatTime(hours * 3600 * 1000)
+                        }
+                        onRunningChanged: {
+                            if (!running)
+                                parent.remainingTimeText = "--:--"
+                        }
+                    }
+
                     Rectangle {
                         width: 160
                         height: 40
@@ -815,18 +840,7 @@ Window {
                         radius: 10
                         Text {
                             anchors.centerIn: parent
-                            text: {
-                                var speed = root.dashboardData ? root.dashboardData.speed : 0
-                                var traveled = root.dashboardData ? root.dashboardData.distance : 0
-                                var total = root.dashboardData ? root.dashboardData.totalDistance : 0
-                                if (!root.dashboardData || !root.dashboardData.isRiding || speed <= 0)
-                                    return "--:--"
-                                var remaining = total - traveled
-                                if (remaining <= 0)
-                                    return "0:00"
-                                // T = D / V  (hours), convert to milliseconds for formatTime
-                                return formatTime((remaining / speed) * 3600 * 1000)
-                            }
+                            text: parent.parent.remainingTimeText
                             color: "#000000"
                             font.pointSize: 16
                             font.bold: true
@@ -844,7 +858,7 @@ Window {
                 Column {
 
                     Text {
-                        text: "DISTANCE"
+                        text: "REMAINING"
                         color: root.eGreen
                         font.pointSize: 12
                         verticalAlignment: Text.AlignVCenter
@@ -857,9 +871,13 @@ Window {
                         radius: 10
                         Text {
                             anchors.centerIn: parent
-                            text: root.dashboardData 
-                                ? (root.dashboardData.distance).toFixed(2) + " km"
-                                : "0.00 km"
+                            text: {
+                                var total = root.dashboardData ? root.dashboardData.totalDistance : 0
+                                var traveled = root.dashboardData ? root.dashboardData.distance : 0
+                                var remaining = total - traveled
+                                if (remaining < 0) remaining = 0
+                                return remaining.toFixed(2) + " km"
+                            }
                             color: "#000000"
                             font.pointSize: 16
                             font.bold: true
@@ -903,141 +921,118 @@ Window {
                         id: mapComponent
 
                         Item {
+
+                            // OSM Plugin
+                            Plugin {
+                                id: mapPlugin
+                                name: "osm"
+                            }
+
+                            // Geocode Model for address search
+                            GeocodeModel {
+                                id: geocodeModel
+                                plugin: mapPlugin
+                                autoUpdate: false
+                                onStatusChanged: {
+                                    if (status === GeocodeModel.Ready && count > 0) {
+                                        var result = get(0)
+                                        theMap.center = result.coordinate
+                                        theMap.zoomLevel = 14
+                                        destinationMarker.center = result.coordinate
+                                        destinationMarker.visible = true
+
+                                        routeQuery.clearWaypoints()
+                                        routeQuery.addWaypoint(
+                                            QtPositioning.coordinate(
+                                                root.dashboardData ? root.dashboardData.latitude : 65.06086919646035,
+                                                root.dashboardData ? root.dashboardData.longitude : 25.467637259998213
+                                            )
+                                        )
+                                        routeQuery.addWaypoint(result.coordinate)
+                                        routeModel.update()
+                                    } else if (status === GeocodeModel.Error) {
+                                        console.warn("Geocode error:", errorString)
+                                    }
+                                }
+                            }
+
+                            // Route Query
+                            RouteQuery {
+                                id: routeQuery
+                                travelModes: RouteQuery.CarTravel
+                                routeOptimizations: RouteQuery.ShortestRoute
+                            }
+
+                            // Route Model
+                            RouteModel {
+                                id: routeModel
+                                plugin: mapPlugin
+                                query: routeQuery
+                                autoUpdate: false
+                                onStatusChanged: {
+                                    if (status === RouteModel.Error) {
+                                        console.warn("Route error:", errorString)
+                                    }
+                                }
+                            }
+
                             Map {
                                 id: theMap
                                 anchors.fill: parent
-                                plugin: Plugin {
-                                    name: "osm"
-                                }
-                                center: root.dashboardData && root.dashboardData.isRiding 
-                                    ? QtPositioning.coordinate(
-                                        root.dashboardData.latitude,
-                                        root.dashboardData.longitude)
-                                    : QtPositioning.coordinate(65.012295, 25.470932)
+                                plugin: mapPlugin
+                                center: QtPositioning.coordinate(65.06086919646035, 25.467637259998213)
                                 zoomLevel: 14
                                 visible: false
-                                
-                                // Route polyline - shows the path following roads
-                                MapPolyline {
-                                    id: routeLine
-                                    line.width: 4
-                                    line.color: root.bgColor
-                                    path: [
-                                        QtPositioning.coordinate(65.012295, 25.470932),
-                                        QtPositioning.coordinate(65.012615, 25.471401),
-                                        QtPositioning.coordinate(65.012653, 25.471447),
-                                        QtPositioning.coordinate(65.012691, 25.471509),
-                                        QtPositioning.coordinate(65.013001, 25.471958),
-                                        QtPositioning.coordinate(65.013068, 25.472055),
-                                        QtPositioning.coordinate(65.013216, 25.472270),
-                                        QtPositioning.coordinate(65.013343, 25.472452),
-                                        QtPositioning.coordinate(65.013442, 25.472598),
-                                        QtPositioning.coordinate(65.013515, 25.472695),
-                                        QtPositioning.coordinate(65.013837, 25.473170),
-                                        QtPositioning.coordinate(65.013920, 25.473296),
-                                        QtPositioning.coordinate(65.014118, 25.473597),
-                                        QtPositioning.coordinate(65.014168, 25.473674),
-                                        QtPositioning.coordinate(65.014197, 25.473560),
-                                        QtPositioning.coordinate(65.014213, 25.473502),
-                                        QtPositioning.coordinate(65.014335, 25.473057),
-                                        QtPositioning.coordinate(65.014369, 25.472934),
-                                        QtPositioning.coordinate(65.014384, 25.472880),
-                                        QtPositioning.coordinate(65.014395, 25.472839),
-                                        QtPositioning.coordinate(65.014628, 25.471988),
-                                        QtPositioning.coordinate(65.014660, 25.471870),
-                                        QtPositioning.coordinate(65.014684, 25.471783),
-                                        QtPositioning.coordinate(65.014729, 25.471843),
-                                        QtPositioning.coordinate(65.014809, 25.471806),
-                                        QtPositioning.coordinate(65.014857, 25.471892),
-                                        QtPositioning.coordinate(65.015095, 25.472248),
-                                        QtPositioning.coordinate(65.015187, 25.472384),
-                                        QtPositioning.coordinate(65.015247, 25.472458),
-                                        QtPositioning.coordinate(65.015286, 25.472520),
-                                        QtPositioning.coordinate(65.015702, 25.473147),
-                                        QtPositioning.coordinate(65.015758, 25.473207),
-                                        QtPositioning.coordinate(65.015795, 25.473260),
-                                        QtPositioning.coordinate(65.015891, 25.472904),
-                                        QtPositioning.coordinate(65.015992, 25.472527),
-                                        QtPositioning.coordinate(65.016094, 25.472350),
-                                        QtPositioning.coordinate(65.016297, 25.471599),
-                                        QtPositioning.coordinate(65.016319, 25.471491),
-                                        QtPositioning.coordinate(65.016342, 25.471010),
-                                        QtPositioning.coordinate(65.016388, 25.470851),
-                                        QtPositioning.coordinate(65.016942, 25.469930),
-                                        QtPositioning.coordinate(65.017204, 25.469516),
-                                        QtPositioning.coordinate(65.017578, 25.468907),
-                                        QtPositioning.coordinate(65.017590, 25.468887),
-                                        QtPositioning.coordinate(65.017734, 25.468710),
-                                        QtPositioning.coordinate(65.018824, 25.468114),
-                                        QtPositioning.coordinate(65.018935, 25.468126),
-                                        QtPositioning.coordinate(65.019000, 25.468175),
-                                        QtPositioning.coordinate(65.019100, 25.468305),
-                                        QtPositioning.coordinate(65.019206, 25.468208),
-                                        QtPositioning.coordinate(65.019235, 25.468192),
-                                        QtPositioning.coordinate(65.019264, 25.468177),
-                                        QtPositioning.coordinate(65.019322, 25.468162),
-                                        QtPositioning.coordinate(65.019362, 25.468155),
-                                        QtPositioning.coordinate(65.019401, 25.468155),
-                                        QtPositioning.coordinate(65.019441, 25.468199),
-                                        QtPositioning.coordinate(65.019558, 25.468117),
-                                        QtPositioning.coordinate(65.020496, 25.468252),
-                                        QtPositioning.coordinate(65.020549, 25.468260),
-                                        QtPositioning.coordinate(65.020688, 25.468214),
-                                        QtPositioning.coordinate(65.020765, 25.468213),
-                                        QtPositioning.coordinate(65.021662, 25.468349),
-                                        QtPositioning.coordinate(65.021716, 25.468390),
-                                        QtPositioning.coordinate(65.021834, 25.468480),
-                                        QtPositioning.coordinate(65.022046, 25.468507),
-                                        QtPositioning.coordinate(65.022091, 25.468513),
-                                        QtPositioning.coordinate(65.022145, 25.468518),
-                                        QtPositioning.coordinate(65.022171, 25.468520),
-                                        QtPositioning.coordinate(65.022298, 25.468541),
-                                        QtPositioning.coordinate(65.022316, 25.468544),
-                                        QtPositioning.coordinate(65.022427, 25.468561),
-                                        QtPositioning.coordinate(65.022527, 25.468491),
-                                        QtPositioning.coordinate(65.022554, 25.468484),
-                                        QtPositioning.coordinate(65.023118, 25.468574),
-                                        QtPositioning.coordinate(65.023135, 25.468595),
-                                        QtPositioning.coordinate(65.023221, 25.468701),
-                                        QtPositioning.coordinate(65.023409, 25.468901),
-                                        QtPositioning.coordinate(65.023430, 25.468924),
-                                        QtPositioning.coordinate(65.023528, 25.469031),
-                                        QtPositioning.coordinate(65.023571, 25.469197),
-                                        QtPositioning.coordinate(65.023591, 25.469201),
-                                        QtPositioning.coordinate(65.023615, 25.469210),
-                                        QtPositioning.coordinate(65.023689, 25.469234),
-                                        QtPositioning.coordinate(65.023739, 25.469255),
-                                        QtPositioning.coordinate(65.023765, 25.469259),
-                                        QtPositioning.coordinate(65.023815, 25.469231),
-                                        QtPositioning.coordinate(65.024034, 25.469405),
-                                        QtPositioning.coordinate(65.024226, 25.469568),
-                                        QtPositioning.coordinate(65.024380, 25.469949),
-                                        QtPositioning.coordinate(65.024397, 25.469919),
-                                        QtPositioning.coordinate(65.024406, 25.469853),
-                                        QtPositioning.coordinate(65.024437, 25.469924),
-                                        QtPositioning.coordinate(65.025045, 25.470413),
-                                        QtPositioning.coordinate(65.025442, 25.470742),
-                                        QtPositioning.coordinate(65.025492, 25.470801),
-                                        QtPositioning.coordinate(65.025815, 25.471060),
-                                        QtPositioning.coordinate(65.025853, 25.471090),
-                                        QtPositioning.coordinate(65.025879, 25.470899),
-                                        QtPositioning.coordinate(65.025899, 25.470752),
-                                        QtPositioning.coordinate(65.026015, 25.470853),
-                                        QtPositioning.coordinate(65.026279, 25.471060),
-                                        QtPositioning.coordinate(65.026427, 25.471114),
-                                        QtPositioning.coordinate(65.026626, 25.471166),
-                                        QtPositioning.coordinate(65.026867, 25.471137),
-                                        QtPositioning.coordinate(65.027114, 25.471035),
-                                        QtPositioning.coordinate(65.027360, 25.470852),
-                                        QtPositioning.coordinate(65.027637, 25.470579),
-                                        QtPositioning.coordinate(65.027720, 25.470498),
-                                        QtPositioning.coordinate(65.027701, 25.470169),
-                                        QtPositioning.coordinate(65.027639, 25.470241),
-                                        QtPositioning.coordinate(65.027324, 25.470527),
-                                        QtPositioning.coordinate(65.027189, 25.470625),
-                                        QtPositioning.coordinate(65.027070, 25.470689),
-                                        QtPositioning.coordinate(65.026950, 25.470746)
-                                    ]
+
+                                // Use cycling map type from OSM
+                                Component.onCompleted: {
+                                    for (var i = 0; i < supportedMapTypes.length; i++) {
+                                        if (supportedMapTypes[i].name === "Cycle Map") {
+                                            activeMapType = supportedMapTypes[i]
+                                            break
+                                        }
+                                    }
+                                }
+
+                                Behavior on bearing {
+                                    RotationAnimation {
+                                        duration: 200
+                                        direction: RotationAnimation.Shortest
+                                    }
+                                }
+
+                                Behavior on center {
+                                    CoordinateAnimation { duration: 150 }
+                                }
+
+                                // Follow vehicle during ride
+                                Connections {
+                                    target: root.dashboardData
+                                    enabled: root.dashboardData && root.dashboardData.isRiding
+                                    function onLatitudeChanged() {
+                                        theMap.center = QtPositioning.coordinate(
+                                            root.dashboardData.latitude,
+                                            root.dashboardData.longitude)
+                                    }
+                                    function onLongitudeChanged() {
+                                        theMap.center = QtPositioning.coordinate(
+                                            root.dashboardData.latitude,
+                                            root.dashboardData.longitude)
+                                    }
+                                    function onHeadingChanged() {
+                                        theMap.bearing = root.dashboardData.heading
+                                    }
+                                }
+
+                                // Route display from RouteModel
+                                MapItemView {
+                                    model: routeModel
+                                    delegate: MapRoute {
+                                        route: routeData
+                                        line.color: root.eGreen
+                                        line.width: 4
+                                        smooth: true
+                                    }
                                 }
                                 
                                 // Vehicle marker - shows current position
@@ -1047,30 +1042,23 @@ Window {
                                         ? QtPositioning.coordinate(
                                             root.dashboardData.latitude,
                                             root.dashboardData.longitude)
-                                        : QtPositioning.coordinate(65.012295, 25.470932)
-                                    radius: 20
+                                        : QtPositioning.coordinate(65.06086919646035, 25.467637259998213)
+                                    radius: 1
                                     color: root.eGreen
-                                    border.width: 3
+                                    border.width: 1
                                     border.color: "#000000"
-                                    opacity: 0.9
+                                    opacity: 0.5
                                 }
-                                
-                                // Start position marker
+
+                                // Destination marker - shown after search
                                 MapCircle {
-                                    center: QtPositioning.coordinate(65.012295, 25.470932)
-                                    radius: 15
-                                    color: "#00aaff"
-                                    border.width: 2
-                                    border.color: "#ffffff"
-                                }
-                                
-                                // End position marker
-                                MapCircle {
-                                    center: QtPositioning.coordinate(65.026950, 25.470746)
-                                    radius: 15
+                                    id: destinationMarker
+                                    center: QtPositioning.coordinate(0, 0)
+                                    radius: 20
                                     color: "#ff3366"
-                                    border.width: 2
+                                    border.width: 3
                                     border.color: "#ffffff"
+                                    visible: false
                                 }
                             }
 
@@ -1087,37 +1075,161 @@ Window {
                                 source: theMap
                                 maskSource: maskRect
 
+                                // Search Bar Overlay
+                                Rectangle {
+                                    id: searchBar
+                                    anchors.top: parent.top
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.margins: 6
+                                    height: 32
+                                    radius: 8
+                                    color: "#111111"
+                                    border.color: "#333333"
+                                    border.width: 1
+                                    z: 10
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 6
+                                        anchors.rightMargin: 4
+                                        spacing: 4
+
+                                        TextInput {
+                                            id: searchInput
+                                            width: parent.width - searchButton.width - 14
+                                            height: parent.height
+                                            color: root.eLightGrey
+                                            font.pointSize: 9
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            clip: true
+
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: "Search destination..."
+                                                color: "#666666"
+                                                font.pointSize: 9
+                                                visible: searchInput.text === ""
+                                            }
+
+                                            Keys.onReturnPressed: {
+                                                if (text !== "") {
+                                                    geocodeModel.query = text
+                                                    geocodeModel.update()
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            id: searchButton
+                                            width: 28
+                                            height: 24
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            color: root.eGreen
+                                            radius: 6
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "Go"
+                                                color: "#000000"
+                                                font.pointSize: 8
+                                                font.bold: true
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (searchInput.text !== "") {
+                                                        geocodeModel.query = searchInput.text
+                                                        geocodeModel.update()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Route info overlay
+                                Rectangle {
+                                    anchors.top: searchBar.bottom
+                                    anchors.topMargin: 4
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: parent.width - 12
+                                    height: 22
+                                    radius: 6
+                                    color: "#bb111111"
+                                    z: 10
+                                    visible: routeModel.count > 0
+
+                                    property real routeDist: routeModel.status === RouteModel.Ready && routeModel.count > 0
+                                        ? routeModel.get(0).distance : 0
+                                    property real routeTime: routeModel.status === RouteModel.Ready && routeModel.count > 0
+                                        ? routeModel.get(0).travelTime : 0
+
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 10
+
+                                        Text {
+                                            text: parent.parent.routeDist > 0
+                                                ? (parent.parent.routeDist / 1000).toFixed(1) + " km"
+                                                : ""
+                                            color: root.eGreen
+                                            font.pointSize: 8
+                                        }
+
+                                        Text {
+                                            text: parent.parent.routeTime > 0
+                                                ? Math.ceil(parent.parent.routeTime / 60) + " min"
+                                                : ""
+                                            color: root.eLightGrey
+                                            font.pointSize: 8
+                                        }
+                                    }
+                                }
+
                                 MouseArea {
                                     anchors.fill: parent
                                     z: 0
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                                     property point startPos
                                     property var startCenter
+                                    property real startTilt
+                                    property real startBearing
+                                    property bool isRightButton: false
 
                                     onPressed: function (mouse) {
                                         startPos = Qt.point(mouse.x, mouse.y)
                                         startCenter = theMap.center
+                                        startTilt = theMap.tilt
+                                        startBearing = theMap.bearing
+                                        isRightButton = (mouse.button === Qt.RightButton)
                                     }
 
                                     onPositionChanged: function (mouse) {
                                         if (pressed) {
-                                            // Convert start and current positions to coordinates
-                                            var startCoord = theMap.toCoordinate(
-                                                        startPos)
-                                            var currentCoord = theMap.toCoordinate(
-                                                        Qt.point(mouse.x,
-                                                                 mouse.y))
-
-                                            // Calculate the difference
-                                            var latDiff = startCoord.latitude
-                                                    - currentCoord.latitude
-                                            var lonDiff = startCoord.longitude
-                                                    - currentCoord.longitude
-
-                                            // Apply the difference to the original center
-                                            theMap.center = QtPositioning.coordinate(
-                                                        startCenter.latitude + latDiff,
-                                                        startCenter.longitude + lonDiff)
+                                            if (isRightButton) {
+                                                // Right-click drag: vertical = tilt, horizontal = bearing
+                                                var dy = mouse.y - startPos.y
+                                                var dx = mouse.x - startPos.x
+                                                var newTilt = startTilt - dy * 0.5
+                                                newTilt = Math.max(theMap.minimumTilt, Math.min(theMap.maximumTilt, newTilt))
+                                                theMap.tilt = newTilt
+                                                var newBearing = startBearing + dx * 0.5
+                                                newBearing = ((newBearing % 360) + 360) % 360
+                                                theMap.bearing = newBearing
+                                            } else {
+                                                // Left-click drag: pan
+                                                var startCoord = theMap.toCoordinate(startPos)
+                                                var currentCoord = theMap.toCoordinate(Qt.point(mouse.x, mouse.y))
+                                                var latDiff = startCoord.latitude - currentCoord.latitude
+                                                var lonDiff = startCoord.longitude - currentCoord.longitude
+                                                theMap.center = QtPositioning.coordinate(
+                                                    startCenter.latitude + latDiff,
+                                                    startCenter.longitude + lonDiff)
+                                            }
                                         }
                                     }
 
@@ -1130,6 +1242,50 @@ Window {
                                             theMap.zoomLevel = Math.max(
                                                         theMap.zoomLevel - 1,
                                                         theMap.minimumZoomLevel)
+                                        }
+                                    }
+                                }
+
+                                // Tilt / Bearing controls (bottom-left)
+                                Column {
+                                    anchors.left: parent.left
+                                    anchors.bottom: starJourney.top
+                                    anchors.leftMargin: 6
+                                    anchors.bottomMargin: 6
+                                    spacing: 3
+                                    z: 10
+
+                                    // Tilt Up
+                                    Rectangle {
+                                        width: 26; height: 26; radius: 6
+                                        color: "#bb222222"
+                                        Text { anchors.centerIn: parent; text: "▲"; color: root.eLightGrey; font.pointSize: 9 }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: theMap.tilt = Math.min(theMap.tilt + 10, theMap.maximumTilt)
+                                        }
+                                    }
+                                    // Tilt Down
+                                    Rectangle {
+                                        width: 26; height: 26; radius: 6
+                                        color: "#bb222222"
+                                        Text { anchors.centerIn: parent; text: "▼"; color: root.eLightGrey; font.pointSize: 9 }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: theMap.tilt = Math.max(theMap.tilt - 10, theMap.minimumTilt)
+                                        }
+                                    }
+                                    // Reset tilt/bearing
+                                    Rectangle {
+                                        width: 26; height: 26; radius: 6
+                                        color: "#bb222222"
+                                        Text { anchors.centerIn: parent; text: "⟲"; color: root.eGreen; font.pointSize: 11 }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: { theMap.tilt = 0; theMap.bearing = 0 }
                                         }
                                     }
                                 }
@@ -1166,6 +1322,13 @@ Window {
                                         onClicked: {
                                             console.log("Button clicked!")
                                             if (root.routeSimulator) {
+                                                // Pass route from RouteModel to C++ before starting
+                                                if (!root.dashboardData.isRiding && routeModel.count > 0) {
+                                                    var route = routeModel.get(0)
+                                                    var path = route.path
+                                                    console.log("Passing route with", path.length, "points to simulator")
+                                                    root.routeSimulator.setRoute(path)
+                                                }
                                                 console.log("Calling toggleRide()")
                                                 root.routeSimulator.toggleRide()
                                             } else {

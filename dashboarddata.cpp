@@ -5,8 +5,8 @@ DashboardData::DashboardData(QObject *parent)
       m_nextInstruction("In 200m, turn left"), m_songTitle("Riding High"),
       m_artistName("The Highway Band"), m_isPlaying(true), m_temperature("22"),
       m_weatherIcon("☀️"), m_weatherDesc("Sunny"),
-      m_latitude(65.01323660736493), m_longitude(25.466785314663174),
-      m_isRiding(false), m_distance(0.0), m_totalDistance(0.0)
+      m_latitude(65.06086919646035), m_longitude(25.467637259998213),
+      m_isRiding(false), m_distance(0.0), m_totalDistance(0.0), m_heading(0.0)
 {
 }
 
@@ -217,5 +217,19 @@ void DashboardData::setTotalDistance(double dist)
   {
     m_totalDistance = dist;
     emit totalDistanceChanged();
+  }
+}
+
+double DashboardData::heading() const
+{
+  return m_heading;
+}
+
+void DashboardData::setHeading(double heading)
+{
+  if (qAbs(m_heading - heading) > 0.1)
+  {
+    m_heading = heading;
+    emit headingChanged();
   }
 }

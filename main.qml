@@ -25,6 +25,7 @@ Window {
     property bool statsViewOpen: false
     property var dashboardData
     property var routeSimulator
+    property var musicFileList: []
     property real currentTemperature: 0
     property string currentTime: new Date().toLocaleTimeString(Qt.locale(), "h:mm")
 
@@ -420,17 +421,16 @@ Window {
                 spacing: 20
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                // Playlist — add more qrc:/ entries here (and register them in qml.qrc)
-                property var songList: [
-                    "qrc:/assets/media/Balti - Allo.mp3",
-                    "qrc:/assets/media/Balti - Ya Galbi.mp3"
-                ]
+                // Playlist — auto-loaded from assets/media/ (just drop .mp3 files in the folder)
+                property var songList: root.musicFileList
                 property int currentSongIndex: 0
 
                 // Media player backend
                 MediaPlayer {
                     id: audioPlayer
-                    source: mediaPlayerRow.songList[mediaPlayerRow.currentSongIndex]
+                    source: mediaPlayerRow.songList.length > 0
+                            ? mediaPlayerRow.songList[mediaPlayerRow.currentSongIndex]
+                            : ""
                     audioOutput: AudioOutput {
                         id: audioOutput
                         volume: 0.5
@@ -843,7 +843,7 @@ Window {
                 Column {
 
                     Text {
-                        text: "REMAINING"
+                        text: "DISTANCE LEFT"
                         color: root.eGreen
                         font.pointSize: 12
                         verticalAlignment: Text.AlignVCenter
@@ -882,17 +882,19 @@ Window {
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Map placeholder
                 Rectangle {
+                    id:mapPlaceholder
                     width: 200
                     height: 320
                     color: "#111111"
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    //border.color: "#222222"
+                    //border.width: 2
 
+                    // Map Loader - attempts to load the map plugin, but falls back to placeholder if it fails (e.g. missing QtLocation)
                     Loader {
                         id: mapLoader
                         anchors.fill: parent
-                        anchors.margins: 2
+                        anchors.margins: 0
                         sourceComponent: mapComponent
                         onStatusChanged: {
                             if (status === Loader.Error) {
@@ -902,10 +904,12 @@ Window {
                         }
                     }
 
+                    // Actual map component with OSM plugin and routing
                     Component {
                         id: mapComponent
 
                         Item {
+                            anchors.fill: parent
 
                             // OSM Plugin
                             Plugin {
@@ -918,6 +922,8 @@ Window {
                                 id: geocodeModel
                                 plugin: mapPlugin
                                 autoUpdate: false
+
+                                // When geocode results are ready, center map on first result and update route
                                 onStatusChanged: {
                                     if (status === GeocodeModel.Ready && count > 0) {
                                         var result = get(0)
@@ -961,6 +967,7 @@ Window {
                                 }
                             }
 
+                            // The Map itself
                             Map {
                                 id: theMap
                                 anchors.fill: parent
@@ -978,7 +985,7 @@ Window {
                                         }
                                     }
                                 }
-
+                                // Smooth animations for map movements
                                 Behavior on bearing {
                                     RotationAnimation {
                                         duration: 200
@@ -986,11 +993,12 @@ Window {
                                     }
                                 }
 
+                                // Smooth animation for map center changes
                                 Behavior on center {
                                     CoordinateAnimation { duration: 150 }
                                 }
 
-                                // Follow vehicle during ride
+                                // Update map center and bearing based on DashboardData when riding
                                 Connections {
                                     target: root.dashboardData
                                     enabled: root.dashboardData && root.dashboardData.isRiding
@@ -1009,7 +1017,7 @@ Window {
                                     }
                                 }
 
-                                // Route display from RouteModel
+                                // route display from routemodel
                                 MapItemView {
                                     model: routeModel
                                     delegate: MapRoute {
@@ -1047,6 +1055,7 @@ Window {
                                 }
                             }
 
+                            // Mask for rounded corners on the map
                             Rectangle {
                                 id: maskRect
                                 anchors.fill: parent
@@ -1054,6 +1063,7 @@ Window {
                                 visible: false
                             }
 
+                            // Opacity mask for rounded corners on the map
                             OpacityMask {
                                 id: maskedMap
                                 anchors.fill: parent
@@ -1174,6 +1184,7 @@ Window {
                                     }
                                 }
 
+                                // Map interaction area - handles panning, zooming, tilt, and bearing
                                 MouseArea {
                                     anchors.fill: parent
                                     z: 0

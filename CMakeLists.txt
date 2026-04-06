@@ -62,6 +62,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     target_link_libraries(Escooter_Infotainement_System_OAMK_Thesis PRIVATE Qt6::Core5Compat)
 endif()
 
+# Pass the source directory to C++ so the media scanner can find assets/media/
+target_compile_definitions(Escooter_Infotainement_System_OAMK_Thesis PRIVATE
+    SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 set_target_properties(Escooter_Infotainement_System_OAMK_Thesis PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}

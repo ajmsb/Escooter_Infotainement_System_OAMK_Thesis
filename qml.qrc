@@ -2,23 +2,24 @@
     <qresource prefix="/">
         <file>assets/fonts/Sintony/Sintony-Bold.ttf</file>
         <file>assets/fonts/Sintony/Sintony-Regular.ttf</file>
+        <file>assets/icons/boxiconslock.png</file>
+        <file>assets/icons/boxiconslockopen.png</file>
         <file>assets/icons/bx_stats.png</file>
         <file>assets/icons/Group.png</file>
+        <file>assets/icons/Head_light_off.png</file>
         <file>assets/icons/Head_light.png</file>
         <file>assets/icons/material-symbols_fast-rewind-rounded-2.png</file>
         <file>assets/icons/material-symbols_fast-rewind-rounded.png</file>
+        <file>assets/icons/menu.png</file>
         <file>assets/icons/Pause.png</file>
         <file>assets/icons/Play.png</file>
-        <file>assets/icons/torch_off.png</file>
-        <file>assets/media/Balti - Allo.mp3</file>
-        <file>assets/media/cover.jpg</file>
-        <file>main.qml</file>
-        <file>assets/icons/menu.png</file>
-        <file>assets/icons/svg-path.png</file>
         <file>assets/icons/svg-path-2.png</file>
         <file>assets/icons/svg-path-3.png</file>
-        <file>assets/icons/Head_light_off.png</file>
-        <file>assets/icons/boxiconslock.png</file>
-        <file>assets/icons/boxiconslockopen.png</file>
+        <file>assets/icons/svg-path.png</file>
+        <file>assets/icons/torch_off.png</file>
+        <file>assets/media/Balti - Allo.mp3</file>
+        <file>assets/media/Balti - Ya Hasra.mp3</file>
+        <file>assets/media/cover.jpg</file>
+        <file>main.qml</file>
     </qresource>
 </RCC>

@@ -24,7 +24,6 @@ private slots:
   void updatePosition();
 
 private:
-  void generateRoute();
   double calculateDistance(const QGeoCoordinate &from, const QGeoCoordinate &to);
   
   DashboardData *m_dashboardData;
@@ -36,6 +35,7 @@ private:
   QGeoCoordinate m_startCoord;
   QGeoCoordinate m_endCoord;
   double m_interpolationStep;
+  bool m_routeSet;
 };
 
 #endif // ROUTESIMULATOR_H

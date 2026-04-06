@@ -795,6 +795,7 @@ Window {
 
                     // Smooth remaining time - updates once per second
                     property string remainingTimeText: "--:--"
+                    property real avgSpeed: 0.0
                     Timer {
                         id: remainingTimeTimer
                         interval: 1000
@@ -808,13 +809,23 @@ Window {
                                 parent.remainingTimeText = "0:00"
                                 return
                             }
-                            // Fixed 25 km/h → remaining km / 25 km/h = hours
-                            var hours = remaining / 25.0
+                            // Smooth speed with exponential moving average (alpha = 0.15)
+                            var currentSpeed = root.dashboardData ? root.dashboardData.speed : 0
+                            if (parent.avgSpeed < 0.5) {
+                                // Initialize on first reading
+                                parent.avgSpeed = currentSpeed > 0.5 ? currentSpeed : 20.0
+                            } else {
+                                parent.avgSpeed = 0.15 * currentSpeed + 0.85 * parent.avgSpeed
+                            }
+                            var speedForEta = parent.avgSpeed > 1.0 ? parent.avgSpeed : 20.0
+                            var hours = remaining / speedForEta
                             parent.remainingTimeText = formatTime(hours * 3600 * 1000)
                         }
                         onRunningChanged: {
-                            if (!running)
+                            if (!running) {
                                 parent.remainingTimeText = "--:--"
+                                parent.avgSpeed = 0.0
+                            }
                         }
                     }
 
@@ -1318,8 +1329,8 @@ Window {
                                         onClicked: {
                                             console.log("Button clicked!")
                                             if (root.routeSimulator) {
-                                                // Pass route from RouteModel to C++ before starting
-                                                if (!root.dashboardData.isRiding && routeModel.count > 0) {
+                                                // Only set the route on a fresh start (not when resuming)
+                                                if (!root.dashboardData.isRiding && routeModel.count > 0 && root.dashboardData.distance < 0.001) {
                                                     var route = routeModel.get(0)
                                                     var path = route.path
                                                     console.log("Passing route with", path.length, "points to simulator")

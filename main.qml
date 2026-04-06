@@ -422,7 +422,6 @@ Window {
 
                 // Playlist — add more qrc:/ entries here (and register them in qml.qrc)
                 property var songList: [
-                    "qrc:/assets/media/The Rosenberg Trio - For Sephora (Instrumental).mp3",
                     "qrc:/assets/media/Balti - Allo.mp3",
                     "qrc:/assets/media/Balti - Ya Galbi.mp3"
                 ]
@@ -434,9 +433,10 @@ Window {
                     source: mediaPlayerRow.songList[mediaPlayerRow.currentSongIndex]
                     audioOutput: AudioOutput {
                         id: audioOutput
-                        volume: 0.7
+                        volume: 0.5
                     }
 
+                    // Auto-advance logic
                     onMediaStatusChanged: {
                         // Auto-advance to next song when current one finishes
                         if (mediaStatus === MediaPlayer.EndOfMedia) {
@@ -446,26 +446,9 @@ Window {
                         }
                     }
                     
+                    // Log playback state changes
                     onPlaybackStateChanged: {
                         console.log("Playback state:", playbackState)
-                    }
-                    
-                    onMetaDataChanged: {
-                        console.log("Metadata changed")
-                        console.log("Title:", metaData.stringValue(MediaMetaData.Title))
-                        console.log("Artist:", metaData.stringValue(MediaMetaData.Artist))
-                        
-                        // Try to get cover art - check different metadata keys
-                        var coverArtUrl = metaData.value(MediaMetaData.CoverArtUrlLarge) 
-                                       || metaData.value(MediaMetaData.CoverArtUrlSmall)
-                                       || metaData.value(MediaMetaData.ThumbnailImage)
-                        
-                        console.log("Cover art URL type:", typeof coverArtUrl)
-                        console.log("Cover art URL:", coverArtUrl)
-                        
-                        if (coverArtUrl && coverArtUrl.toString() !== "") {
-                            albumArt.source = coverArtUrl
-                        }
                     }
                 }
                 
@@ -487,18 +470,20 @@ Window {
                         source: "qrc:/assets/media/cover.jpg"
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
-                        z: 1
-                        
-                        Component.onCompleted: {
-                            console.log("=== ALBUM ART DEBUG ===")
-                            console.log("Source:", source)
-                            console.log("Status:", status)
-                            console.log("Width:", width, "Height:", height)
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "#000000"
+                            opacity: 0.7
+                        }
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: mediaPlayerUI.width
+                                height: mediaPlayerUI.height
+                                radius: 10
+                            }
                         }
                         
-                        onStatusChanged: {
-                            console.log("Album art status:", status, "(0=Null, 1=Ready, 2=Loading, 3=Error)")
-                        }
                     }                   
                     
                     // Song info and progress
@@ -981,7 +966,7 @@ Window {
                                 anchors.fill: parent
                                 plugin: mapPlugin
                                 center: QtPositioning.coordinate(65.06086919646035, 25.467637259998213)
-                                zoomLevel: 14
+                                zoomLevel: 70
                                 visible: false
 
                                 // Use cycling map type from OSM

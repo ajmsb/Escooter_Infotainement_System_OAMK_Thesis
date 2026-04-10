@@ -5,6 +5,8 @@
 #include <QTimer>
 #include "dashboarddata.h"
 
+// DataSimulator simulates dynamic changes in speed, battery level, 
+// navigation instructions, music info, and weather conditions for testing the dashboard UI.
 class DataSimulator : public QObject
 {
   Q_OBJECT

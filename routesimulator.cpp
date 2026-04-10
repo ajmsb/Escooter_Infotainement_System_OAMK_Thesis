@@ -4,6 +4,7 @@
 #include <QRandomGenerator>
 #include <limits>
 
+// RouteSimulator simulates a ride along a predefined route, updating position, speed, distance, and battery level over time.
 RouteSimulator::RouteSimulator(DashboardData *data, QObject *parent)
     : QObject(parent),
       m_dashboardData(data),
@@ -19,12 +20,14 @@ RouteSimulator::RouteSimulator(DashboardData *data, QObject *parent)
   m_timer->setInterval(100); // Update every 100ms
 }
 
+// Calculate distance between two coordinates using Qt's built-in method (returns meters)
 double RouteSimulator::calculateDistance(const QGeoCoordinate &from, const QGeoCoordinate &to)
 {
   // Use Qt's built-in distance calculation (returns meters)
   return from.distanceTo(to);
 }
 
+// Set the route from a list of QGeoCoordinate values passed from QML
 void RouteSimulator::setRoute(const QVariantList &coordinates)
 {
   if (coordinates.size() < 2) {
@@ -85,6 +88,7 @@ void RouteSimulator::setRoute(const QVariantList &coordinates)
            << m_totalDistance << "meters total";
 }
 
+// Start the ride simulation
 void RouteSimulator::startRide()
 {
   if (!m_routeSet || m_routePoints.isEmpty()) {
@@ -125,6 +129,7 @@ void RouteSimulator::startRide()
   }
 }
 
+// Stop the ride simulation
 void RouteSimulator::stopRide()
 {
   if (m_dashboardData->isRiding())
@@ -137,6 +142,7 @@ void RouteSimulator::stopRide()
   }
 }
 
+// Toggle ride state (start/stop)
 void RouteSimulator::toggleRide()
 {
   if (m_dashboardData->isRiding())
@@ -149,6 +155,7 @@ void RouteSimulator::toggleRide()
   }
 }
 
+// Update position, speed, distance, and battery level on each timer tick
 void RouteSimulator::updatePosition()
 {
   if (!m_dashboardData->isRiding() || m_currentPointIndex >= m_routePoints.size() - 1)
@@ -170,9 +177,10 @@ void RouteSimulator::updatePosition()
     return;
   }
   
-  // E-scooter max speed: 25 km/h = 6.944 m/s
+  // Speed limit depends on riding mode: ECO = 18 km/h, TRB = 25 km/h
   double timerIntervalSec = m_timer->interval() / 1000.0;
-  double maxSpeed_ms = 20.0 * 1000.0 / 3600.0; // 6.944 m/s
+  double speedLimit_kmh = (m_dashboardData->ridingMode() == "TRB") ? 25.0 : 18.0;
+  double maxSpeed_ms = speedLimit_kmh * 1000.0 / 3600.0;
   double maxDistPerTick = maxSpeed_ms * timerIntervalSec;
   double remaining = maxDistPerTick;
   double totalMoved = 0.0;

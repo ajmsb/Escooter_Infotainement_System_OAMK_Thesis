@@ -8,6 +8,7 @@
 #include <QVariantList>
 #include "dashboarddata.h"
 
+// RouteSimulator simulates a ride along a predefined route, updating position, speed, distance, and battery level over time.
 class RouteSimulator : public QObject
 {
   Q_OBJECT

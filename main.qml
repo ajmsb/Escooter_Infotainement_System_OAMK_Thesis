@@ -25,10 +25,45 @@ Window {
     property bool statsViewOpen: false
     property var dashboardData
     property var routeSimulator
+    property bool routeChanged: false
     property var musicFileList: []
     property real currentTemperature: 0
     property string currentTime: new Date().toLocaleTimeString(Qt.locale(), "h:mm")
 
+    // --- Ride statistics tracking ---
+    property int rideElapsedSeconds: 0
+    property real rideSpeedSum: 0.0
+    property int rideSpeedSamples: 0
+    property int rideStartBattery: 100
+    property real rideDistanceTraveled: 0.0
+
+    // Timer to track ride statistics every second while riding
+    Timer {
+        id: rideStatsTimer
+        interval: 1000
+        running: root.dashboardData ? root.dashboardData.isRiding : false
+        repeat: true
+        onTriggered: {
+            root.rideElapsedSeconds += 1
+            var spd = root.dashboardData ? root.dashboardData.speed : 0
+            if (spd > 0) {
+                root.rideSpeedSum += spd
+                root.rideSpeedSamples += 1
+            }
+            root.rideDistanceTraveled = root.dashboardData ? root.dashboardData.distance : 0
+        }
+        onRunningChanged: {
+            if (running && root.rideElapsedSeconds === 0) {
+                // Ride just started — capture initial battery
+                root.rideStartBattery = root.dashboardData ? root.dashboardData.batteryPercent : 100
+                root.rideSpeedSum = 0.0
+                root.rideSpeedSamples = 0
+                root.rideDistanceTraveled = 0.0
+            }
+        }
+    }
+
+    // Timer to update current time every second
     Timer {
         interval: 1000
         running: true
@@ -100,6 +135,7 @@ Window {
         return fileName
     }
 
+    // Main layout
     Row {
         spacing: 20
         anchors.centerIn: parent
@@ -305,7 +341,7 @@ Window {
                         width: 20
                         height: 20
                         fillMode: Image.PreserveAspectFit
-                        z: 1
+                        z: 4
                     }
 
                     MouseArea {
@@ -325,7 +361,7 @@ Window {
                 }
             }
         }
-        // Display Column
+        // Display / Media Column
         Column {
             spacing: 20
             anchors.verticalCenter: parent.verticalCenter
@@ -380,38 +416,57 @@ Window {
             Row {
                 spacing: 5
                 anchors.horizontalCenter: parent.horizontalCenter
+
+                property string currentMode: root.dashboardData ? root.dashboardData.ridingMode : "ECO"
+
                 Rectangle {
                     width: 68
                     height: 40
-                    color: "#caff00"
+                    color: parent.currentMode === "ECO" ? "#caff00" : "#111111"
                     radius: 10
-                    // border.color: "#222222"
-                    // border.width: 2
+                    border.color: parent.currentMode === "ECO" ? "#caff00" : "#222222"
+                    border.width: parent.currentMode === "ECO" ? 0 : 2
                     Text {
                         anchors.centerIn: parent
                         text: "ECO"
-                        color: "#000000"
+                        color: parent.parent.currentMode === "ECO" ? "#000000" : root.eGreen
                         font.pointSize: 12
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (root.dashboardData)
+                                root.dashboardData.ridingMode = "ECO"
+                        }
+                    }
                 }
                 Rectangle {
                     width: 68
                     height: 40
-                    color: "#111111"
+                    color: parent.currentMode === "TRB" ? "#caff00" : "#111111"
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    border.color: parent.currentMode === "TRB" ? "#caff00" : "#222222"
+                    border.width: parent.currentMode === "TRB" ? 0 : 2
                     Text {
                         anchors.centerIn: parent
                         text: "TRB"
-                        color: root.eGreen
+                        color: parent.parent.currentMode === "TRB" ? "#000000" : root.eGreen
                         font.pointSize: 12
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (root.dashboardData)
+                                root.dashboardData.ridingMode = "TRB"
+                        }
                     }
                 }
             }
@@ -572,8 +627,8 @@ Window {
                             Image {
                                 source: "qrc:/assets/icons/material-symbols_fast-rewind-rounded-2.png"
                                 anchors.centerIn: parent
-                                width: 24
-                                height: 24
+                                width: 15
+                                height: 15
                                 fillMode: Image.PreserveAspectFit
                             }
                             
@@ -653,8 +708,8 @@ Window {
                             Image {
                                 source: "qrc:/assets/icons/material-symbols_fast-rewind-rounded.png"
                                 anchors.centerIn: parent
-                                width: 22
-                                height: 22
+                                width: 15
+                                height: 15
                                 fillMode: Image.PreserveAspectFit
                             }
                             
@@ -974,6 +1029,9 @@ Window {
                                 onStatusChanged: {
                                     if (status === RouteModel.Error) {
                                         console.warn("Route error:", errorString)
+                                    }
+                                    if (status === RouteModel.Ready && count > 0) {
+                                        root.routeChanged = true
                                     }
                                 }
                             }
@@ -1329,12 +1387,14 @@ Window {
                                         onClicked: {
                                             console.log("Button clicked!")
                                             if (root.routeSimulator) {
-                                                // Only set the route on a fresh start (not when resuming)
-                                                if (!root.dashboardData.isRiding && routeModel.count > 0 && root.dashboardData.distance < 0.001) {
+                                                // Pass route if it's a fresh start or route has changed
+                                                if (!root.dashboardData.isRiding && routeModel.count > 0
+                                                    && (root.dashboardData.distance < 0.001 || root.routeChanged)) {
                                                     var route = routeModel.get(0)
                                                     var path = route.path
                                                     console.log("Passing route with", path.length, "points to simulator")
                                                     root.routeSimulator.setRoute(path)
+                                                    root.routeChanged = false
                                                 }
                                                 console.log("Calling toggleRide()")
                                                 root.routeSimulator.toggleRide()
@@ -1361,16 +1421,9 @@ Window {
         visible: root.statsViewOpen
         z: 97
 
-        Text {
-            anchors.centerIn: parent
-            text: "Statistics View"
-            color: root.eGreen
-            font.pointSize: 24
-            font.bold: true
-        }
-
         // Back button
         Rectangle {
+            id: statsBackBtn
             width: 40
             height: 40
             color: "#111111"
@@ -1392,6 +1445,143 @@ Window {
             MouseArea {
                 anchors.fill: parent
                 onClicked: root.statsViewOpen = false
+            }
+        }
+
+        // Title
+        Text {
+            id: statsTitle
+            text: "Ride Statistics"
+            color: root.eGreen
+            font.pointSize: 20
+            font.bold: true
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 20
+        }
+
+        // Stats cards grid
+        Grid {
+            id: statsGrid
+            columns: 2
+            spacing: 16
+            anchors.centerIn: parent
+
+            // Helper function for duration formatting
+            function fmtDuration(secs) {
+                if (secs <= 0) return "0m 0s"
+                var h = Math.floor(secs / 3600)
+                var m = Math.floor((secs % 3600) / 60)
+                var s = secs % 60
+                if (h > 0)
+                    return h + "h " + m + "m " + s + "s"
+                return m + "m " + s + "s"
+            }
+
+            // --- Total Distance ---
+            Rectangle {
+                width: 260; height: 110
+                color: "#161616"
+                radius: 14
+                border.color: "#222222"; border.width: 1
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text {
+                        text: "Total Distance"
+                        color: root.eLightGrey
+                        font.pointSize: 11
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    Text {
+                        text: root.rideDistanceTraveled.toFixed(2) + " km"
+                        color: root.eGreen
+                        font.pointSize: 22
+                        font.bold: true
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+
+            // --- Average Speed ---
+            Rectangle {
+                width: 260; height: 110
+                color: "#161616"
+                radius: 14
+                border.color: "#222222"; border.width: 1
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text {
+                        text: "Average Speed"
+                        color: root.eLightGrey
+                        font.pointSize: 11
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    Text {
+                        text: (root.rideSpeedSamples > 0
+                               ? (root.rideSpeedSum / root.rideSpeedSamples).toFixed(1)
+                               : "0.0") + " km/h"
+                        color: root.eGreen
+                        font.pointSize: 22
+                        font.bold: true
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+
+            // --- Ride Duration ---
+            Rectangle {
+                width: 260; height: 110
+                color: "#161616"
+                radius: 14
+                border.color: "#222222"; border.width: 1
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text {
+                        text: "Ride Duration"
+                        color: root.eLightGrey
+                        font.pointSize: 11
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    Text {
+                        text: statsGrid.fmtDuration(root.rideElapsedSeconds)
+                        color: root.eGreen
+                        font.pointSize: 22
+                        font.bold: true
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+
+            // --- Battery Used ---
+            Rectangle {
+                width: 260; height: 110
+                color: "#161616"
+                radius: 14
+                border.color: "#222222"; border.width: 1
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text {
+                        text: "Battery Used"
+                        color: root.eLightGrey
+                        font.pointSize: 11
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    Text {
+                        text: {
+                            var current = root.dashboardData ? root.dashboardData.batteryPercent : 0
+                            var used = root.rideStartBattery - current
+                            return (used > 0 ? used : 0) + " %"
+                        }
+                        color: root.eGreen
+                        font.pointSize: 22
+                        font.bold: true
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
             }
         }
     }

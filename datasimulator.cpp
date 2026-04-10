@@ -1,5 +1,7 @@
 #include "datasimulator.h"
 
+// DataSimulator simulates dynamic changes in speed, battery level, navigation instructions, 
+// music info, and weather conditions for testing the dashboard UI.
 DataSimulator::DataSimulator(DashboardData *data, QObject *parent)
     : QObject(parent), m_dashboardData(data), m_timer(new QTimer(this)), m_currentSpeed(0), m_currentBattery(78), m_speedIncreasing(true)
 {
@@ -7,20 +9,23 @@ DataSimulator::DataSimulator(DashboardData *data, QObject *parent)
   m_timer->setInterval(100); // Update every 100ms
 }
 
+// Start the data simulation
 void DataSimulator::start()
 {
   m_timer->start();
 }
 
+// Stop the data simulation
 void DataSimulator::stop()
 {
   m_timer->stop();
 }
 
+// Update simulated data on each timer tick
 void DataSimulator::updateData()
 {
   // Simulate speed: only vary when riding is active
-  if (m_dashboardData->isRiding())
+  /*if (m_dashboardData->isRiding())
   {
     if (m_speedIncreasing)
     {
@@ -44,10 +49,10 @@ void DataSimulator::updateData()
     m_currentSpeed = 0;
     m_speedIncreasing = true;
   }
-  m_dashboardData->setSpeed(m_currentSpeed);
+  m_dashboardData->setSpeed(m_currentSpeed); */
 
   // Simulate battery: decrease slowly every 50 updates (5 seconds), only while riding
-  static int batteryCounter = 0;
+  /*static int batteryCounter = 0;
   if (m_dashboardData->isRiding())
   {
     batteryCounter++;
@@ -69,7 +74,7 @@ void DataSimulator::updateData()
   else
   {
     batteryCounter = 0;
-  }
+  }*/
 
   // Cycle navigation instructions every 100 updates (10 seconds)
   static int navCounter = 0;
@@ -112,7 +117,7 @@ void DataSimulator::updateData()
   }
 
   // Cycle weather every 120 updates (12 seconds)
-  static int weatherCounter = 0;
+  /*static int weatherCounter = 0;
   static int weatherIndex = 0;
   weatherCounter++;
   if (weatherCounter >= 120)
@@ -125,5 +130,5 @@ void DataSimulator::updateData()
     m_dashboardData->setWeatherIcon(icons[weatherIndex]);
     m_dashboardData->setWeatherDesc(descriptions[weatherIndex]);
     m_dashboardData->setTemperature(temps[weatherIndex]);
-  }
+  }*/
 }

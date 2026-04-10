@@ -3,6 +3,10 @@
 
 #include <QObject>
 
+/* DashboardData is a QObject that holds all the properties related to the scooter's dashboard, 
+such as speed, battery level, navigation instructions, music info, weather conditions, and location data. 
+It provides getter and setter methods for each property, along with signals to notify when properties change. 
+This class serves as the central data model for the dashboard UI. */
 class DashboardData : public QObject
 {
   Q_OBJECT

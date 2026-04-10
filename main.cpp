@@ -9,6 +9,7 @@
 #include "datasimulator.h"
 #include "routesimulator.h"
 
+// Main application entry point
 int main(int argc, char *argv[])
 {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)

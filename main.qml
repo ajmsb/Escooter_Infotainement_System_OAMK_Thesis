@@ -15,11 +15,20 @@ Window {
     visible: true
     title: qsTr("E-Scooter Dashboard")
     color: bgColor
-    // Colors properties
+    // Theme toggle
+    property bool darkTheme: true
+
+    // Colors properties (theme-aware)
     property string eGreen: "#caff00"
-    property string eGrey: "#3d3d3d"
-    property string eLightGrey: "#c2c2c2"
-    property string bgColor: "#0a0a0a"
+    property string eDark: "#222222"
+    property string eGrey: darkTheme ? "#3d3d3d" : "#e8e8e8"
+    property string eLightGrey: darkTheme ? "#e8e8e8" : "#e8e8e8"
+    property string bgColor: darkTheme ? "#0a0a0a" : "#ffffff"
+    property string cardColor: darkTheme ? "#161616" : "#e8e8e8"
+    property string borderColor: darkTheme ? "#3d3d3d" : "transparent"
+    property string statsCardColor: darkTheme ? "#161616" : "#f0f0f0"
+    property string textPrimary: darkTheme ? "#caff00" : "#161616"
+    property string textSecondary: darkTheme ? "#161616" : "#161616"
 
     property bool menuOpen: false
     property bool statsViewOpen: false
@@ -153,10 +162,10 @@ Window {
                 Rectangle {
                     width: 40
                     height: 40
-                    color: "#111111"
+                    color: root.cardColor
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    border.color: root.borderColor
+                    border.width: 1
 
                     Image {
                         source: "qrc:/assets/icons/menu.png"
@@ -181,10 +190,10 @@ Window {
                     id: statsButton
                     width: 40
                     height: 40
-                    color: "#111111"
+                    color: root.cardColor
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    border.color: root.borderColor
+                    border.width: 1
 
                     Image {
                         source: "qrc:/assets/icons/bx_stats.png"
@@ -209,10 +218,10 @@ Window {
                     id: lockControl
                     width: 40
                     height: 40
-                    color: "#111111"
+                    color: root.cardColor
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    border.color: root.borderColor
+                    border.width: 1
 
                     Image {
                         id: lockOn
@@ -221,6 +230,7 @@ Window {
                         width: 24
                         height: 24
                         fillMode: Image.PreserveAspectFit
+                        visible: false
                     }
                     Image {
                         id: lockOff
@@ -229,6 +239,7 @@ Window {
                         width: 24
                         height: 24
                         fillMode: Image.PreserveAspectFit
+                        visible: true
                     }
                     MouseArea {
                         anchors.fill: parent
@@ -237,9 +248,7 @@ Window {
                             if (lockOn.visible) {
                                 lockOn.visible = false
                                 lockOff.visible = true
-                                lockControl.color = "#111111"
-
-                                
+                                lockControl.color = root.cardColor
 
                             } else {
                                 lockOn.visible = true
@@ -260,10 +269,10 @@ Window {
                     id: headlightControl
                     width: 40
                     height: 40
-                    color: "#111111"
+                    color: root.cardColor
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    border.color: root.borderColor
+                    border.width: 1
 
                     Image {
                         id: headlightOn
@@ -272,6 +281,7 @@ Window {
                         width: 24
                         height: 24
                         fillMode: Image.PreserveAspectFit
+                        visible: false
                     }
                     Image {
                         id: headlightOff
@@ -280,6 +290,7 @@ Window {
                         width: 24
                         height: 24
                         fillMode: Image.PreserveAspectFit
+                        visible: true
                     }
                     MouseArea {
                         anchors.fill: parent
@@ -288,7 +299,7 @@ Window {
                             if (headlightOn.visible) {
                                 headlightOn.visible = false
                                 headlightOff.visible = true
-                                headlightControl.color = "#111111"
+                                headlightControl.color = root.cardColor
 
                                 
 
@@ -310,10 +321,10 @@ Window {
                 Rectangle {
                     width: 40
                     height: 80
-                    color: "#111111"
+                    color: root.cardColor
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    border.color: root.borderColor
+                    border.width: 1
                     clip: true
 
                     // Volume fill (grows from bottom)
@@ -322,7 +333,7 @@ Window {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         height: parent.height * audioOutput.volume
-                        color: root.eGreen
+                        color: root.textPrimary
                         radius: parent.radius
                         opacity: 0.8
 
@@ -375,10 +386,10 @@ Window {
                     Rectangle {
                         width: 140
                         height: 100
-                        color: "#111111"
+                        color: root.cardColor
                         radius: 10
-                        border.color: "#222222"
-                        border.width: 2
+                        border.color: root.borderColor
+                        border.width: 1
 
                         Column {
                             spacing: -10
@@ -390,8 +401,8 @@ Window {
                                 text: new Date().toLocaleDateString(
                                           Qt.locale(),
                                           "dddd") + " " + root.currentTemperature.toFixed(1) + "°C"
-                                color: root.eGreen
-                                font.pointSize: 12
+                                color: root.textPrimary
+                                font.pointSize: 11
                                 font.bold: false
                                 //horizontalAlignment: Text.AlignHCenter
                                 //verticalAlignment: Text.AlignVCenter
@@ -401,8 +412,8 @@ Window {
                                 anchors.horizontalCenter: parent.horizontalCenter
 
                                 text: root.currentTime
-                                color: root.eGreen
-                                font.pointSize: 35
+                                color: root.textPrimary
+                                font.pointSize: 34
                                 font.bold: true
                                 //horizontalAlignment: Text.AlignHCenter
                                 //verticalAlignment: Text.AlignVCenter
@@ -422,14 +433,14 @@ Window {
                 Rectangle {
                     width: 68
                     height: 40
-                    color: parent.currentMode === "ECO" ? "#caff00" : "#111111"
+                    color: parent.currentMode === "ECO" ? "#caff00" : root.cardColor
                     radius: 10
-                    border.color: parent.currentMode === "ECO" ? "#caff00" : "#222222"
-                    border.width: parent.currentMode === "ECO" ? 0 : 2
+                    border.color: parent.currentMode === "ECO" ? "#caff00" : root.borderColor
+                    border.width: parent.currentMode === "ECO" ? 0 : 1
                     Text {
                         anchors.centerIn: parent
                         text: "ECO"
-                        color: parent.parent.currentMode === "ECO" ? "#000000" : root.eGreen
+                        color: parent.parent.currentMode === "ECO" ? "#000000" : root.textPrimary
                         font.pointSize: 12
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
@@ -447,14 +458,14 @@ Window {
                 Rectangle {
                     width: 68
                     height: 40
-                    color: parent.currentMode === "TRB" ? "#caff00" : "#111111"
+                    color: parent.currentMode === "TRB" ? "#caff00" : root.cardColor
                     radius: 10
-                    border.color: parent.currentMode === "TRB" ? "#caff00" : "#222222"
-                    border.width: parent.currentMode === "TRB" ? 0 : 2
+                    border.color: parent.currentMode === "TRB" ? "#caff00" : root.borderColor
+                    border.width: parent.currentMode === "TRB" ? 0 : 1
                     Text {
                         anchors.centerIn: parent
                         text: "TRB"
-                        color: parent.parent.currentMode === "TRB" ? "#000000" : root.eGreen
+                        color: parent.parent.currentMode === "TRB" ? "#000000" : root.textPrimary
                         font.pointSize: 12
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
@@ -514,8 +525,8 @@ Window {
                     height: 140
                     color: "transparent"
                     radius: 10
-                    border.color: "#222222"
-                    border.width: 2
+                    border.color: root.borderColor
+                    border.width: 1
                     clip: true
                     
                     // Album art
@@ -529,6 +540,9 @@ Window {
                             anchors.fill: parent
                             color: "#000000"
                             opacity: 0.7
+                            radius: 10
+                            border.color: root.borderColor
+                            border.width: 1
                         }
                         layer.enabled: true
                         layer.effect: OpacityMask {
@@ -539,7 +553,7 @@ Window {
                             }
                         }
                         
-                    }                   
+                    }
                     
                     // Song info and progress
                     Column {
@@ -557,7 +571,7 @@ Window {
                                 }
                                 return root.getSongName(audioPlayer.source)
                             }
-                            color: root.eGreen
+                            color: root.textPrimary
                             font.pointSize: 12
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
@@ -591,7 +605,7 @@ Window {
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: formatTime(audioPlayer.position) + " / " + formatTime(audioPlayer.duration)
-                            color: root.eLightGrey
+                            color: root.textSecondary
                             font.pointSize: 10
                             horizontalAlignment: Text.AlignHCenter
                             style: Text.Outline
@@ -786,7 +800,7 @@ Window {
                     //anchors.verticalCenter: parent.verticalCenter
                     Text {
                         text: "BATTERY"
-                        color: root.eGreen
+                        color: root.textPrimary
                         font.pointSize: 12
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -824,7 +838,7 @@ Window {
                                 anchors.centerIn: batteryRect
                                 text: (root.dashboardData ? root.dashboardData.batteryPercent : 0)
                                       + "%"
-                                color: root.bgColor
+                                color: "#000000"
                                 font.pointSize: 16
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
@@ -843,7 +857,7 @@ Window {
                     //anchors.verticalCenter: parent.verticalCenter
                     Text {
                         text: "REMAINING TIME"
-                        color: root.eGreen
+                        color: root.textPrimary
                         font.pointSize: 12
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -910,7 +924,7 @@ Window {
 
                     Text {
                         text: "DISTANCE LEFT"
-                        color: root.eGreen
+                        color: root.textPrimary
                         font.pointSize: 12
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -951,10 +965,10 @@ Window {
                     id:mapPlaceholder
                     width: 200
                     height: 320
-                    color: "#111111"
+                    color: root.cardColor
                     radius: 10
                     //border.color: "#222222"
-                    //border.width: 2
+                    //border.width: 1
 
                     // Map Loader - attempts to load the map plugin, but falls back to placeholder if it fails (e.g. missing QtLocation)
                     Loader {
@@ -1148,9 +1162,9 @@ Window {
                                     anchors.margins: 6
                                     height: 32
                                     radius: 8
-                                    color: "#111111"
-                                    border.color: "#333333"
-                                    border.width: 1
+                                    color: root.eLightGrey
+                                    //border.color: root.borderColor
+                                    //border.width: 1
                                     z: 10
 
                                     Row {
@@ -1163,7 +1177,7 @@ Window {
                                             id: searchInput
                                             width: parent.width - searchButton.width - 14
                                             height: parent.height
-                                            color: root.eLightGrey
+                                            color: root.textSecondary
                                             font.pointSize: 9
                                             verticalAlignment: TextInput.AlignVCenter
                                             clip: true
@@ -1239,7 +1253,7 @@ Window {
                                             text: parent.parent.routeDist > 0
                                                 ? (parent.parent.routeDist / 1000).toFixed(1) + " km"
                                                 : ""
-                                            color: root.eGreen
+                                            color: root.textPrimary
                                             font.pointSize: 8
                                         }
 
@@ -1247,7 +1261,7 @@ Window {
                                             text: parent.parent.routeTime > 0
                                                 ? Math.ceil(parent.parent.routeTime / 60) + " min"
                                                 : ""
-                                            color: root.eLightGrey
+                                            color: root.textSecondary
                                             font.pointSize: 8
                                         }
                                     }
@@ -1323,8 +1337,8 @@ Window {
                                     // Tilt Up
                                     Rectangle {
                                         width: 26; height: 26; radius: 6
-                                        color: "#bb222222"
-                                        Text { anchors.centerIn: parent; text: "▲"; color: root.eLightGrey; font.pointSize: 9 }
+                                        color: root.eGreen
+                                        Text { anchors.centerIn: parent; text: "▲"; color: root.eDark; font.pointSize: 9 }
                                         MouseArea {
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
@@ -1334,8 +1348,8 @@ Window {
                                     // Tilt Down
                                     Rectangle {
                                         width: 26; height: 26; radius: 6
-                                        color: "#bb222222"
-                                        Text { anchors.centerIn: parent; text: "▼"; color: root.eLightGrey; font.pointSize: 9 }
+                                        color: root.eGreen
+                                        Text { anchors.centerIn: parent; text: "▼"; color: root.eDark; font.pointSize: 9 }
                                         MouseArea {
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
@@ -1345,7 +1359,7 @@ Window {
                                     // Reset tilt/bearing
                                     Rectangle {
                                         width: 26; height: 26; radius: 6
-                                        color: "#bb222222"
+                                        color: root.eDark
                                         Text { anchors.centerIn: parent; text: "⟲"; color: root.eGreen; font.pointSize: 11 }
                                         MouseArea {
                                             anchors.fill: parent
@@ -1426,9 +1440,9 @@ Window {
             id: statsBackBtn
             width: 40
             height: 40
-            color: "#111111"
+            color: root.cardColor
             radius: 10
-            border.color: "#222222"
+            border.color: root.borderColor
             border.width: 2
             anchors.top: parent.top
             anchors.left: parent.left
@@ -1437,7 +1451,7 @@ Window {
             Text {
                 anchors.centerIn: parent
                 text: "✕"
-                color: root.eGreen
+                color: root.textPrimary
                 font.pointSize: 16
                 font.bold: true
             }
@@ -1452,7 +1466,7 @@ Window {
         Text {
             id: statsTitle
             text: "Ride Statistics"
-            color: root.eGreen
+            color: root.textPrimary
             font.pointSize: 20
             font.bold: true
             anchors.top: parent.top
@@ -1481,21 +1495,21 @@ Window {
             // --- Total Distance ---
             Rectangle {
                 width: 260; height: 110
-                color: "#161616"
+                color: root.statsCardColor
                 radius: 14
-                border.color: "#222222"; border.width: 1
+                border.color: root.borderColor; border.width: 1
                 Column {
                     anchors.centerIn: parent
                     spacing: 6
                     Text {
                         text: "Total Distance"
-                        color: root.eLightGrey
+                        color: root.textSecondary
                         font.pointSize: 11
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
                     Text {
                         text: root.rideDistanceTraveled.toFixed(2) + " km"
-                        color: root.eGreen
+                        color: root.textPrimary
                         font.pointSize: 22
                         font.bold: true
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -1506,15 +1520,15 @@ Window {
             // --- Average Speed ---
             Rectangle {
                 width: 260; height: 110
-                color: "#161616"
+                color: root.statsCardColor
                 radius: 14
-                border.color: "#222222"; border.width: 1
+                border.color: root.borderColor; border.width: 1
                 Column {
                     anchors.centerIn: parent
                     spacing: 6
                     Text {
                         text: "Average Speed"
-                        color: root.eLightGrey
+                        color: root.textSecondary
                         font.pointSize: 11
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
@@ -1522,7 +1536,7 @@ Window {
                         text: (root.rideSpeedSamples > 0
                                ? (root.rideSpeedSum / root.rideSpeedSamples).toFixed(1)
                                : "0.0") + " km/h"
-                        color: root.eGreen
+                        color: root.textPrimary
                         font.pointSize: 22
                         font.bold: true
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -1533,21 +1547,21 @@ Window {
             // --- Ride Duration ---
             Rectangle {
                 width: 260; height: 110
-                color: "#161616"
+                color: root.statsCardColor
                 radius: 14
-                border.color: "#222222"; border.width: 1
+                border.color: root.borderColor; border.width: 1
                 Column {
                     anchors.centerIn: parent
                     spacing: 6
                     Text {
                         text: "Ride Duration"
-                        color: root.eLightGrey
+                        color: root.textSecondary
                         font.pointSize: 11
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
                     Text {
                         text: statsGrid.fmtDuration(root.rideElapsedSeconds)
-                        color: root.eGreen
+                        color: root.textPrimary
                         font.pointSize: 22
                         font.bold: true
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -1558,15 +1572,15 @@ Window {
             // --- Battery Used ---
             Rectangle {
                 width: 260; height: 110
-                color: "#161616"
+                color: root.statsCardColor
                 radius: 14
-                border.color: "#222222"; border.width: 1
+                border.color: root.borderColor; border.width: 1
                 Column {
                     anchors.centerIn: parent
                     spacing: 6
                     Text {
                         text: "Battery Used"
-                        color: root.eLightGrey
+                        color: root.textSecondary
                         font.pointSize: 11
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
@@ -1576,7 +1590,7 @@ Window {
                             var used = root.rideStartBattery - current
                             return (used > 0 ? used : 0) + " %"
                         }
-                        color: root.eGreen
+                        color: root.textPrimary
                         font.pointSize: 22
                         font.bold: true
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -1654,6 +1668,59 @@ Window {
                 color: "#000000"
                 font.pointSize: 18
                 font.bold: true
+            }
+
+            // Theme toggle setting
+            Row {
+                spacing: 10
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                Text {
+                    text: root.darkTheme ? "Dark Theme" : "Light Theme"
+                    color: "#000000"
+                    font.pointSize: 12
+                    font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                // Toggle switch
+                Rectangle {
+                    id: themeToggle
+                    width: 50
+                    height: 26
+                    radius: 13
+                    color: root.darkTheme ? "#555555" : root.eGreen
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Behavior on color {
+                        ColorAnimation { duration: 200 }
+                    }
+
+                    // Toggle knob
+                    Rectangle {
+                        id: themeKnob
+                        width: 22
+                        height: 22
+                        radius: 11
+                        color: "#ffffff"
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: root.darkTheme ? 2 : parent.width - width - 2
+
+                        Behavior on x {
+                            NumberAnimation {
+                                duration: 200
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.darkTheme = !root.darkTheme
+                    }
+                }
             }
         }
     }

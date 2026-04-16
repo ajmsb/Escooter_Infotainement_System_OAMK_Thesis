@@ -45,6 +45,8 @@ Window {
     property int rideSpeedSamples: 0
     property int rideStartBattery: 100
     property real rideDistanceTraveled: 0.0
+    property var speedHistory: []
+    property var batteryHistory: []
 
     // Timer to track ride statistics every second while riding
     Timer {
@@ -60,6 +62,11 @@ Window {
                 root.rideSpeedSamples += 1
             }
             root.rideDistanceTraveled = root.dashboardData ? root.dashboardData.distance : 0
+
+            // Store chart data in arrays (charts are lazily loaded)
+            var batt = root.dashboardData ? root.dashboardData.batteryPercent : 100
+            root.speedHistory = root.speedHistory.concat([{x: root.rideElapsedSeconds, y: spd}])
+            root.batteryHistory = root.batteryHistory.concat([{x: root.rideElapsedSeconds, y: batt}])
         }
         onRunningChanged: {
             if (running && root.rideElapsedSeconds === 0) {
@@ -68,6 +75,8 @@ Window {
                 root.rideSpeedSum = 0.0
                 root.rideSpeedSamples = 0
                 root.rideDistanceTraveled = 0.0
+                root.speedHistory = []
+                root.batteryHistory = []
             }
         }
     }
@@ -1435,6 +1444,17 @@ Window {
         visible: root.statsViewOpen
         z: 97
 
+        // Helper function for duration formatting
+        function fmtDuration(secs) {
+            if (secs <= 0) return "0m 0s"
+            var h = Math.floor(secs / 3600)
+            var m = Math.floor((secs % 3600) / 60)
+            var s = secs % 60
+            if (h > 0)
+                return h + "h " + m + "m " + s + "s"
+            return m + "m " + s + "s"
+        }
+
         // Back button
         Rectangle {
             id: statsBackBtn
@@ -1447,6 +1467,7 @@ Window {
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.margins: 15
+            z: 2
 
             Text {
                 anchors.centerIn: parent
@@ -1458,6 +1479,7 @@ Window {
 
             MouseArea {
                 anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
                 onClicked: root.statsViewOpen = false
             }
         }
@@ -1467,133 +1489,328 @@ Window {
             id: statsTitle
             text: "Ride Statistics"
             color: root.textPrimary
-            font.pointSize: 20
+            font.pointSize: 18
             font.bold: true
             anchors.top: parent.top
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.topMargin: 20
+            anchors.topMargin: 22
+            z: 2
         }
 
-        // Stats cards grid
-        Grid {
-            id: statsGrid
-            columns: 2
-            spacing: 16
-            anchors.centerIn: parent
+        // Charts drawn with QML Canvas (avoids ChartView segfault on Qt 6.9 MinGW)
+        Row {
+            anchors.top: statsTitle.bottom
+            anchors.topMargin: 8
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 10
 
-            // Helper function for duration formatting
-            function fmtDuration(secs) {
-                if (secs <= 0) return "0m 0s"
-                var h = Math.floor(secs / 3600)
-                var m = Math.floor((secs % 3600) / 60)
-                var s = secs % 60
-                if (h > 0)
-                    return h + "h " + m + "m " + s + "s"
-                return m + "m " + s + "s"
-            }
-
-            // --- Total Distance ---
+            // ── Left column: Speed Over Time (Canvas) ──
             Rectangle {
-                width: 260; height: 110
+                width: 315
+                height: 285
                 color: root.statsCardColor
                 radius: 14
-                border.color: root.borderColor; border.width: 1
-                Column {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    Text {
-                        text: "Total Distance"
-                        color: root.textSecondary
-                        font.pointSize: 11
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                    Text {
-                        text: root.rideDistanceTraveled.toFixed(2) + " km"
-                        color: root.textPrimary
-                        font.pointSize: 22
-                        font.bold: true
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
+                border.color: root.borderColor
+                border.width: 1
+                clip: true
+
+                Text {
+                    id: speedChartTitle
+                    text: "Speed Over Time"
+                    color: root.darkTheme ? "#aaaaaa" : "#555555"
+                    font.pointSize: 9
+                    font.bold: true
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: 6
+                    z: 2
                 }
-            }
 
-            // --- Average Speed ---
-            Rectangle {
-                width: 260; height: 110
-                color: root.statsCardColor
-                radius: 14
-                border.color: root.borderColor; border.width: 1
-                Column {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    Text {
-                        text: "Average Speed"
-                        color: root.textSecondary
-                        font.pointSize: 11
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                    Text {
-                        text: (root.rideSpeedSamples > 0
-                               ? (root.rideSpeedSum / root.rideSpeedSamples).toFixed(1)
-                               : "0.0") + " km/h"
-                        color: root.textPrimary
-                        font.pointSize: 22
-                        font.bold: true
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                }
-            }
+                Canvas {
+                    id: speedCanvas
+                    anchors.fill: parent
+                    anchors.topMargin: 22
+                    anchors.margins: 4
 
-            // --- Ride Duration ---
-            Rectangle {
-                width: 260; height: 110
-                color: root.statsCardColor
-                radius: 14
-                border.color: root.borderColor; border.width: 1
-                Column {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    Text {
-                        text: "Ride Duration"
-                        color: root.textSecondary
-                        font.pointSize: 11
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                    Text {
-                        text: statsGrid.fmtDuration(root.rideElapsedSeconds)
-                        color: root.textPrimary
-                        font.pointSize: 22
-                        font.bold: true
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                }
-            }
+                    property var dataPoints: root.speedHistory
+                    onDataPointsChanged: requestPaint()
 
-            // --- Battery Used ---
-            Rectangle {
-                width: 260; height: 110
-                color: root.statsCardColor
-                radius: 14
-                border.color: root.borderColor; border.width: 1
-                Column {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    Text {
-                        text: "Battery Used"
-                        color: root.textSecondary
-                        font.pointSize: 11
-                        anchors.horizontalCenter: parent.horizontalCenter
+                    Connections {
+                        target: root
+                        function onDarkThemeChanged() { speedCanvas.requestPaint() }
                     }
-                    Text {
-                        text: {
-                            var current = root.dashboardData ? root.dashboardData.batteryPercent : 0
-                            var used = root.rideStartBattery - current
-                            return (used > 0 ? used : 0) + " %"
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        var w = width, h = height;
+                        ctx.clearRect(0, 0, w, h);
+
+                        var pad = { left: 38, right: 12, top: 8, bottom: 24 };
+                        var gw = w - pad.left - pad.right;
+                        var gh = h - pad.top - pad.bottom;
+
+                        // Determine axis ranges
+                        var pts = dataPoints;
+                        var maxT = 60, maxV = 30;
+                        if (pts.length > 0) {
+                            var lastT = pts[pts.length - 1].x;
+                            if (lastT > maxT - 10) maxT = lastT + 30;
+                            for (var k = 0; k < pts.length; k++) {
+                                if (pts[k].y > maxV - 3) maxV = pts[k].y + 5;
+                            }
                         }
-                        color: root.textPrimary
-                        font.pointSize: 22
+
+                        var gridColor = root.darkTheme ? "#2a2a2a" : "#dddddd";
+                        var labelColor = root.darkTheme ? "#888888" : "#666666";
+
+                        // Grid lines (5 horizontal, 5 vertical)
+                        ctx.strokeStyle = gridColor;
+                        ctx.lineWidth = 1;
+                        for (var gi = 0; gi <= 5; gi++) {
+                            var gy = pad.top + gh * gi / 5;
+                            ctx.beginPath(); ctx.moveTo(pad.left, gy); ctx.lineTo(pad.left + gw, gy); ctx.stroke();
+                            var gx = pad.left + gw * gi / 5;
+                            ctx.beginPath(); ctx.moveTo(gx, pad.top); ctx.lineTo(gx, pad.top + gh); ctx.stroke();
+                        }
+
+                        // Y-axis labels
+                        ctx.fillStyle = labelColor;
+                        ctx.font = "9px sans-serif";
+                        ctx.textAlign = "right";
+                        ctx.textBaseline = "middle";
+                        for (var yi = 0; yi <= 5; yi++) {
+                            var valY = maxV - (maxV * yi / 5);
+                            var posY = pad.top + gh * yi / 5;
+                            ctx.fillText(Math.round(valY).toString(), pad.left - 4, posY);
+                        }
+
+                        // X-axis labels
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "top";
+                        for (var xi = 0; xi <= 5; xi++) {
+                            var valX = maxT * xi / 5;
+                            var posX = pad.left + gw * xi / 5;
+                            ctx.fillText(Math.round(valX) + "s", posX, pad.top + gh + 4);
+                        }
+
+                        // Axis labels
+                        ctx.fillStyle = labelColor;
+                        ctx.font = "8px sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.fillText("km/h", pad.left / 2, pad.top - 2);
+
+                        if (pts.length < 2) {
+                            ctx.fillStyle = labelColor;
+                            ctx.font = "12px sans-serif";
+                            ctx.textAlign = "center";
+                            ctx.textBaseline = "middle";
+                            ctx.fillText("No ride data yet", w / 2, h / 2);
+                            return;
+                        }
+
+                        // Draw filled area + line
+                        function tx(v) { return pad.left + (v / maxT) * gw; }
+                        function ty(v) { return pad.top + gh - (v / maxV) * gh; }
+
+                        // Fill
+                        ctx.beginPath();
+                        ctx.moveTo(tx(pts[0].x), pad.top + gh);
+                        for (var fi = 0; fi < pts.length; fi++)
+                            ctx.lineTo(tx(pts[fi].x), ty(pts[fi].y));
+                        ctx.lineTo(tx(pts[pts.length-1].x), pad.top + gh);
+                        ctx.closePath();
+                        ctx.fillStyle = root.darkTheme ? "rgba(0,206,209,0.15)" : "rgba(0,206,209,0.10)";
+                        ctx.fill();
+
+                        // Line
+                        ctx.beginPath();
+                        ctx.moveTo(tx(pts[0].x), ty(pts[0].y));
+                        for (var li = 1; li < pts.length; li++)
+                            ctx.lineTo(tx(pts[li].x), ty(pts[li].y));
+                        ctx.strokeStyle = root.eGreen;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // ── Right column: Battery chart + summary cards ──
+            Column {
+                spacing: 6
+                
+                Rectangle {
+                    width: 290
+                    height: 165
+                    color: root.statsCardColor
+                    radius: 14
+                    border.color: root.borderColor
+                    border.width: 1
+                    clip: true
+
+                    Text {
+                        id: batteryChartTitle
+                        text: "Battery Level"
+                        color: root.darkTheme ? "#aaaaaa" : "#555555"
+                        font.pointSize: 9
                         font.bold: true
+                        anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.topMargin: 6
+                        z: 2
+                    }
+
+                    Canvas {
+                        id: batteryCanvas
+                        anchors.fill: parent
+                        anchors.topMargin: 22
+                        anchors.margins: 4
+
+                        property var dataPoints: root.batteryHistory
+                        onDataPointsChanged: requestPaint()
+
+                        Connections {
+                            target: root
+                            function onDarkThemeChanged() { batteryCanvas.requestPaint() }
+                        }
+
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            var w = width, h = height;
+                            ctx.clearRect(0, 0, w, h);
+
+                            var pad = { left: 34, right: 12, top: 8, bottom: 24 };
+                            var gw = w - pad.left - pad.right;
+                            var gh = h - pad.top - pad.bottom;
+
+                            var pts = dataPoints;
+                            var maxT = 60;
+                            if (pts.length > 0) {
+                                var lastT = pts[pts.length - 1].x;
+                                if (lastT > maxT - 10) maxT = lastT + 30;
+                            }
+                            var maxV = 100; // battery always 0-100
+
+                            var gridColor = root.darkTheme ? "#2a2a2a" : "#dddddd";
+                            var labelColor = root.darkTheme ? "#888888" : "#666666";
+
+                            // Grid
+                            ctx.strokeStyle = gridColor;
+                            ctx.lineWidth = 1;
+                            for (var gi = 0; gi <= 4; gi++) {
+                                var gy = pad.top + gh * gi / 4;
+                                ctx.beginPath(); ctx.moveTo(pad.left, gy); ctx.lineTo(pad.left + gw, gy); ctx.stroke();
+                                var gx = pad.left + gw * gi / 4;
+                                ctx.beginPath(); ctx.moveTo(gx, pad.top); ctx.lineTo(gx, pad.top + gh); ctx.stroke();
+                            }
+
+                            // Y-axis labels
+                            ctx.fillStyle = labelColor;
+                            ctx.font = "9px sans-serif";
+                            ctx.textAlign = "right";
+                            ctx.textBaseline = "middle";
+                            for (var yi = 0; yi <= 4; yi++) {
+                                var valY = maxV - (maxV * yi / 4);
+                                var posY = pad.top + gh * yi / 4;
+                                ctx.fillText(Math.round(valY) + "%", pad.left - 4, posY);
+                            }
+
+                            // X-axis labels
+                            ctx.textAlign = "center";
+                            ctx.textBaseline = "top";
+                            for (var xi = 0; xi <= 4; xi++) {
+                                var valX = maxT * xi / 4;
+                                var posX = pad.left + gw * xi / 4;
+                                ctx.fillText(Math.round(valX) + "s", posX, pad.top + gh + 4);
+                            }
+
+                            if (pts.length < 2) {
+                                ctx.fillStyle = labelColor;
+                                ctx.font = "11px sans-serif";
+                                ctx.textAlign = "center";
+                                ctx.textBaseline = "middle";
+                                ctx.fillText("No ride data yet", w / 2, h / 2);
+                                return;
+                            }
+
+                            function tx(v) { return pad.left + (v / maxT) * gw; }
+                            function ty(v) { return pad.top + gh - (v / maxV) * gh; }
+
+                            // Fill
+                            ctx.beginPath();
+                            ctx.moveTo(tx(pts[0].x), pad.top + gh);
+                            for (var fi = 0; fi < pts.length; fi++)
+                                ctx.lineTo(tx(pts[fi].x), ty(pts[fi].y));
+                            ctx.lineTo(tx(pts[pts.length-1].x), pad.top + gh);
+                            ctx.closePath();
+                            ctx.fillStyle = root.darkTheme ? "rgba(0,206,209,0.15)" : "rgba(0,206,209,0.10)";
+                            ctx.fill();
+
+                            // Line
+                            ctx.beginPath();
+                            ctx.moveTo(tx(pts[0].x), ty(pts[0].y));
+                            for (var li = 1; li < pts.length; li++)
+                                ctx.lineTo(tx(pts[li].x), ty(pts[li].y));
+                            ctx.strokeStyle = root.eGreen;
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Summary stats mini-cards
+                Grid {
+                    columns: 2
+                    spacing: 8
+
+                    Rectangle {
+                        width: 141; height: 54
+                        color: root.statsCardColor; radius: 10
+                        border.color: root.borderColor; border.width: 1
+                        Column {
+                            anchors.centerIn: parent; spacing: 2
+                            Text { text: "Distance"; color: root.darkTheme ? "#aaaaaa" : "#555555"; font.pointSize: 8; anchors.horizontalCenter: parent.horizontalCenter }
+                            Text { text: root.rideDistanceTraveled.toFixed(2) + " km"; color: root.textPrimary; font.pointSize: 14; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 141; height: 54
+                        color: root.statsCardColor; radius: 10
+                        border.color: root.borderColor; border.width: 1
+                        Column {
+                            anchors.centerIn: parent; spacing: 2
+                            Text { text: "Avg Speed"; color: root.darkTheme ? "#aaaaaa" : "#555555"; font.pointSize: 8; anchors.horizontalCenter: parent.horizontalCenter }
+                            Text { text: (root.rideSpeedSamples > 0 ? (root.rideSpeedSum / root.rideSpeedSamples).toFixed(1) : "0.0") + " km/h"; color: root.textPrimary; font.pointSize: 14; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 141; height: 54
+                        color: root.statsCardColor; radius: 10
+                        border.color: root.borderColor; border.width: 1
+                        Column {
+                            anchors.centerIn: parent; spacing: 2
+                            Text { text: "Duration"; color: root.darkTheme ? "#aaaaaa" : "#555555"; font.pointSize: 8; anchors.horizontalCenter: parent.horizontalCenter }
+                            Text { text: statsView.fmtDuration(root.rideElapsedSeconds); color: root.textPrimary; font.pointSize: 14; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 141; height: 54
+                        color: root.statsCardColor; radius: 10
+                        border.color: root.borderColor; border.width: 1
+                        Column {
+                            anchors.centerIn: parent; spacing: 2
+                            Text { text: "Batt Used"; color: root.darkTheme ? "#aaaaaa" : "#555555"; font.pointSize: 8; anchors.horizontalCenter: parent.horizontalCenter }
+                            Text {
+                                text: {
+                                    var current = root.dashboardData ? root.dashboardData.batteryPercent : 0;
+                                    var used = root.rideStartBattery - current;
+                                    return (used > 0 ? used : 0) + " %";
+                                }
+                                color: root.textPrimary; font.pointSize: 14; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                        }
                     }
                 }
             }

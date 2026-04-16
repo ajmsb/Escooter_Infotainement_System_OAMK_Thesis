@@ -9,8 +9,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Location Positioning Multimedia)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Location Positioning Multimedia)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick Widgets Location Positioning Multimedia Charts)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick Widgets Location Positioning Multimedia Charts)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     find_package(Qt6 REQUIRED COMPONENTS Core5Compat)
@@ -54,9 +54,11 @@ target_link_libraries(Escooter_Infotainement_System_OAMK_Thesis
     PRIVATE
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Quick
+        Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Location
         Qt${QT_VERSION_MAJOR}::Positioning
-        Qt${QT_VERSION_MAJOR}::Multimedia)
+        Qt${QT_VERSION_MAJOR}::Multimedia
+        Qt${QT_VERSION_MAJOR}::Charts)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     target_link_libraries(Escooter_Infotainement_System_OAMK_Thesis PRIVATE Qt6::Core5Compat)
